@@ -19,6 +19,7 @@
           default = pkgs.mkShell {
             packages = with pkgs; [
               uv
+              mdl
             ];
             shellHook = ''
               [[ -d .venv ]] || uv venv .venv
