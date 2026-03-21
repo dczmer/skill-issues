@@ -4,7 +4,7 @@
 name: project-plan-formulation
 description: Conducts iterative interviews to develop comprehensive project planning documents covering overview, tech stack, architecture, development process, conventions, and security. Use when the user asks to "create a project plan", "document a project", "conduct project planning interview", or mentions needing structured project documentation. Can accept supplemental context or instructions when invoked. Supports targeting a specific section with --section.
 allowed-tools: "Read,Grep,Glob,Bash,AskUserQuestion,Write,TodoWrite"
-version: "1.7.0"
+version: "1.8.0"
 author: "Claude Code"
 ---
 
@@ -776,6 +776,55 @@ Format the section summary:
 Use `AskUserQuestion` to present and ask for confirmation.
 
 **BLOCKING GATE:** Must wait for approval, handle corrections, then proceed.
+
+---
+
+## Step 6.5: Cross-Section Consistency Validation
+
+After all sections have been approved (or carried forward), and before proceeding to final assembly, perform a consistency check across all section content.
+
+### What to Validate
+
+Review all approved/carried-forward section content and check for the following types of inconsistencies:
+
+**Technology references:**
+- A database, framework, language, or tool mentioned in one section but contradicted or absent in Section 2 (Tech Stack)
+- Example: Section 3 describes "Redis-based caching" but Section 2 lists no Redis dependency
+- Example: Section 4 mentions "pytest" but Section 2 lists only JavaScript tooling
+
+**Architecture vs. process alignment:**
+- Development/testing workflows (Section 4) that don't match the architecture described in Section 3
+- Example: Section 3 describes microservices but Section 4 has no container-based dev workflow
+- Example: Section 3 lists a message queue but Section 4 has no instructions for running it locally
+
+**Security vs. architecture alignment:**
+- Security mechanisms (Section 6) that reference components not described in Section 3
+- Example: Section 6 describes "Redis-based token blacklist" but Section 3 doesn't include Redis as a component
+
+**Conventions vs. tech stack alignment:**
+- Naming conventions (Section 5) that don't match the languages/frameworks in Section 2
+- Example: Section 5 specifies PEP 8 but Section 2 lists only TypeScript
+
+**Scope alignment:**
+- Features described in Sections 2-6 that fall outside the scope defined in Section 1
+- Example: Section 1 says "mobile apps are out of scope" but Section 3 describes a mobile API
+
+### How to Handle Inconsistencies
+
+1. Compile a list of all detected inconsistencies
+2. If **no inconsistencies** are found, note this and proceed to Step 7
+3. If **inconsistencies are found**, present them to the user using `AskUserQuestion`:
+   - "Before finalizing, I found some potential inconsistencies across sections:"
+   - List each inconsistency with the affected sections and the conflicting details
+   - For each, suggest a resolution (e.g., "Add Redis to Section 2?" or "Remove reference to mobile API in Section 3?")
+   - Ask: "How would you like to resolve these?"
+4. Apply the user's chosen resolutions — this may require returning to a specific section to update its content
+5. After all inconsistencies are resolved (or dismissed by the user), proceed to Step 7
+
+### Skipped/Incomplete Sections
+
+- Do not flag inconsistencies involving skipped or placeholder sections — there's nothing to validate against
+- If a carried-forward section conflicts with a newly revised section, flag it and ask whether to update the carried-forward content
 
 ---
 
