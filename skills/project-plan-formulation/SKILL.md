@@ -4,7 +4,7 @@
 name: project-plan-formulation
 description: Conducts iterative interviews to develop comprehensive project planning documents covering overview, tech stack, architecture, development process, conventions, and security. Use when the user asks to "create a project plan", "document a project", "conduct project planning interview", or mentions needing structured project documentation. Can accept supplemental context or instructions when invoked. Supports targeting a specific section with --section.
 allowed-tools: "Read,Grep,Glob,Bash,AskUserQuestion,Write,TodoWrite"
-version: "1.9.0"
+version: "1.10.0"
 author: "Claude Code"
 ---
 
@@ -785,29 +785,15 @@ After all sections have been approved (or carried forward), and before proceedin
 
 ### What to Validate
 
-Review all approved/carried-forward section content and check for the following types of inconsistencies:
+Review all approved/carried-forward section content for inconsistencies. **Load `references/consistency-validation-examples.md` for detailed examples of each inconsistency type.**
 
-**Technology references:**
-- A database, framework, language, or tool mentioned in one section but contradicted or absent in Section 2 (Tech Stack)
-- Example: Section 3 describes "Redis-based caching" but Section 2 lists no Redis dependency
-- Example: Section 4 mentions "pytest" but Section 2 lists only JavaScript tooling
+Check for these categories:
 
-**Architecture vs. process alignment:**
-- Development/testing workflows (Section 4) that don't match the architecture described in Section 3
-- Example: Section 3 describes microservices but Section 4 has no container-based dev workflow
-- Example: Section 3 lists a message queue but Section 4 has no instructions for running it locally
-
-**Security vs. architecture alignment:**
-- Security mechanisms (Section 6) that reference components not described in Section 3
-- Example: Section 6 describes "Redis-based token blacklist" but Section 3 doesn't include Redis as a component
-
-**Conventions vs. tech stack alignment:**
-- Naming conventions (Section 5) that don't match the languages/frameworks in Section 2
-- Example: Section 5 specifies PEP 8 but Section 2 lists only TypeScript
-
-**Scope alignment:**
-- Features described in Sections 2-6 that fall outside the scope defined in Section 1
-- Example: Section 1 says "mobile apps are out of scope" but Section 3 describes a mobile API
+- **Technology references:** A database, framework, language, or tool mentioned in one section but contradicted or absent in Section 2 (Tech Stack)
+- **Architecture vs. process alignment:** Development/testing workflows (Section 4) that don't match the architecture described in Section 3
+- **Security vs. architecture alignment:** Security mechanisms (Section 6) that reference components not described in Section 3
+- **Conventions vs. tech stack alignment:** Naming conventions (Section 5) that don't match the languages/frameworks in Section 2
+- **Scope alignment:** Features described in Sections 2-6 that fall outside the scope defined in Section 1
 
 ### How to Handle Inconsistencies
 
@@ -973,6 +959,7 @@ Optional guidance for users and AI assistants is available in `references/best-p
 - Example output structure: `references/output-template.md`
 - Error handling: `references/error-handling.md` (load on error scenarios)
 - Best practices: `references/best-practices.md` (optional guidance)
+- Consistency examples: `references/consistency-validation-examples.md` (load when inconsistencies detected)
 - For post-creation updates, just edit `PROJECT_PLAN.md` directly
 - Consider checking this document into git for team visibility
 - Link to this from `AGENTS.md` or `CLAUDE.md` for AI context
