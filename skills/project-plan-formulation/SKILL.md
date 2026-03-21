@@ -4,7 +4,7 @@
 name: project-plan-formulation
 description: Conducts iterative interviews to develop comprehensive project planning documents covering overview, tech stack, architecture, development process, conventions, and security. Use when the user asks to "create a project plan", "document a project", "conduct project planning interview", or mentions needing structured project documentation. Can accept supplemental context or instructions when invoked. Supports targeting a specific section with --section.
 allowed-tools: "Read,Grep,Glob,Bash,AskUserQuestion,Write"
-version: "1.3.0"
+version: "1.4.0"
 author: "Claude Code"
 ---
 
@@ -44,7 +44,9 @@ You can provide supplemental context at invocation:
 
 Section targeting requires an existing `PROJECT_PLAN.md` to load context from. The targeted section will go through the normal gather/clarify/confirm cycle, and the updated content will be merged back into the existing plan.
 
-The interview typically takes 10-20 minutes for a full run, or 3-5 minutes when targeting a single section.
+**Targeted updates:** When an existing `PROJECT_PLAN.md` is detected, you can choose "Targeted update" to describe what has changed (e.g., "we switched from Redis to Memcached"). The skill will identify which sections are affected and only re-interview those, carrying forward all unaffected sections unchanged.
+
+The interview typically takes 10-20 minutes for a full run, 3-5 minutes when targeting a single section, or 5-10 minutes for a targeted update depending on how many sections are affected.
 
 ---
 
@@ -62,10 +64,11 @@ Before doing anything else, use `Glob` to check if a `PROJECT_PLAN.md` file alre
    - List each section with a brief status (e.g., "populated", "placeholder/skipped", "missing")
 4. Use `AskUserQuestion` to ask:
    - "How would you like to proceed with the existing plan?"
-   - Options: "Update it — interview me to revise/fill sections", "Start fresh — discard and rebuild from scratch", "Cancel"
+   - Options: "Update it — interview me to revise/fill sections", "Targeted update — tell me what changed and I'll update only affected sections", "Start fresh — discard and rebuild from scratch", "Cancel"
 5. **If "Update it":** Pre-populate each section's content from the existing plan. During the interview, present the existing content for each section first and ask whether to keep, revise, or replace it. Skip the initial gathering questions for sections the user confirms are still accurate.
-6. **If "Start fresh":** Discard the loaded content and proceed as if no plan exists.
-7. **If "Cancel":** End the skill invocation.
+6. **If "Targeted update":** Proceed to Step 0.4 (Diff-Based Targeted Update).
+7. **If "Start fresh":** Discard the loaded content and proceed as if no plan exists.
+8. **If "Cancel":** End the skill invocation.
 
 **If `PROJECT_PLAN.md` does not exist:**
 - Proceed to Step 0.2
@@ -106,6 +109,56 @@ Check if the user provided a `--section` flag in the invocation.
 
 **If `--section` is not present:**
 - Proceed with the normal sequential flow starting at Section 1
+
+### Step 0.4: Diff-Based Targeted Update
+
+This step is entered when the user selects "Targeted update" in Step 0.1. It allows the user to describe what has changed, and only the affected sections are re-interviewed.
+
+**Step 0.4.1: Gather Change Description**
+
+Use `AskUserQuestion` to ask:
+- "Describe what has changed since the plan was last updated. Be as specific as you like — for example: 'We switched from Redis to Memcached for caching', 'Added E2E tests with Playwright', 'New authentication provider', etc."
+
+Wait for the user's response.
+
+**Step 0.4.2: Identify Affected Sections**
+
+Analyze the user's change description and map it to the plan's sections:
+
+| Change topic | Likely affected sections |
+|---|---|
+| Scope, users, purpose, constraints | Section 1: Overview |
+| Languages, frameworks, libraries, databases, tools | Section 2: Tech Stack |
+| Components, services, data flow, deployment | Section 3: Architecture |
+| Build, setup, testing, CI/CD, dev workflow | Section 4: Development and Testing |
+| Naming, file structure, code style, review process | Section 5: Conventions and Rules |
+| Auth, access control, secrets, encryption, compliance | Section 6: Security |
+
+A single change may affect multiple sections (e.g., "switched to a microservices architecture" affects Sections 3, 4, and possibly 2).
+
+Present the affected sections to the user using `AskUserQuestion`:
+- "Based on your description, I believe these sections need updating:"
+- List the affected sections with a brief explanation of why each is affected
+- "Are these the right sections, or should I include/exclude any?"
+
+Wait for the user's confirmation or corrections.
+
+**Step 0.4.3: Interview Affected Sections Only**
+
+For each confirmed affected section, in order:
+1. Show the current content from the existing plan
+2. Highlight which parts are likely affected by the described change
+3. Run the normal interview cycle for that section (Steps X.1 → X.2 → X.3), pre-populated with existing content
+4. After the section is approved, move to the next affected section
+
+For all unaffected sections, carry forward existing content unchanged.
+
+**Step 0.4.4: Proceed to Final Assembly**
+
+Once all affected sections are approved, skip to Step 7 (Final Assembly):
+- Merge updated sections back into the full plan
+- Preserve all unaffected sections exactly as they were
+- Proceed through Steps 7.1-7.4 as normal
 
 ---
 
