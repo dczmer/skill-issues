@@ -1,3 +1,10 @@
+---
+name: documentation-consistency
+description: Check and fix consistency across README.md, PROJECT_PLAN.md, AGENTS.md, and flake.nix
+allowed-tools: "Read,Glob,Grep,Bash,Task,question"
+version: "1.0.0"
+---
+
 # Documentation Consistency
 
 This skill checks that README.md, PROJECT_PLAN.md, AGENTS.md, and flake.nix are consistent with each other and with the actual state of the project.
