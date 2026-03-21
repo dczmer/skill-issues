@@ -4,7 +4,7 @@
 name: project-plan-formulation
 description: Conducts iterative interviews to develop comprehensive project planning documents covering overview, tech stack, architecture, development process, conventions, and security. Use when the user asks to "create a project plan", "document a project", "conduct project planning interview", or mentions needing structured project documentation. Can accept supplemental context or instructions when invoked. Supports targeting a specific section with --section.
 allowed-tools: "Read,Grep,Glob,Bash,AskUserQuestion,Write"
-version: "1.2.0"
+version: "1.3.0"
 author: "Claude Code"
 ---
 
@@ -189,9 +189,56 @@ Use `AskUserQuestion` to present this summary and ask:
 
 ## Section 2: Tech Stack
 
+### Step 2.0: Auto-Detect Tech Stack From Codebase
+
+Before asking the user questions, proactively scan the codebase for configuration files that reveal the tech stack. Use `Glob` and `Read` to check for the following (skip any that don't exist):
+
+**Package/dependency files:**
+- `package.json`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml` (Node.js/JavaScript/TypeScript)
+- `pyproject.toml`, `setup.py`, `setup.cfg`, `requirements.txt`, `Pipfile`, `poetry.lock` (Python)
+- `go.mod`, `go.sum` (Go)
+- `Cargo.toml`, `Cargo.lock` (Rust)
+- `Gemfile`, `Gemfile.lock` (Ruby)
+- `pom.xml`, `build.gradle`, `build.gradle.kts` (Java/Kotlin)
+- `*.csproj`, `*.sln`, `Directory.Build.props` (C#/.NET)
+- `composer.json` (PHP)
+- `mix.exs` (Elixir)
+- `flake.nix`, `default.nix`, `shell.nix` (Nix — check `inputs` and `buildInputs` for dependencies, language runtimes, and tooling)
+
+**Infrastructure/tooling files:**
+- `Dockerfile`, `docker-compose.yml`, `docker-compose.yaml`
+- `.github/workflows/*.yml`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci/config.yml`
+- `Makefile`, `Taskfile.yml`, `justfile`
+- `tsconfig.json`, `.babelrc`, `babel.config.*`, `vite.config.*`, `webpack.config.*`, `next.config.*`
+- `.eslintrc*`, `.prettierrc*`, `ruff.toml`, `pyproject.toml [tool.ruff]`, `.rubocop.yml`
+- `.editorconfig`, `.nvmrc`, `.python-version`, `.tool-versions`, `.mise.toml`
+- `flake.lock`, `*.nix` files in `nix/` directories — Nix flake inputs, overlays, and dev shell definitions
+
+**From each discovered file, extract:**
+- Languages and versions (from engine fields, version files, tsconfig targets, etc.)
+- Frameworks and major libraries (from dependency lists)
+- Build tools and task runners (from scripts, config files)
+- Linting/formatting tools (from devDependencies or config files)
+- Infrastructure hints (from Docker, CI configs)
+
+**Present the auto-detected findings:**
+Format the discovered tech stack as a preliminary summary and present it to the user using `AskUserQuestion`:
+- "I scanned your codebase and detected the following tech stack. Please review and let me know what's correct, what's missing, and what needs correction:"
+- List each category with discovered items
+- Highlight any items you're uncertain about (e.g., "Found `redis` in dependencies — is this used for caching, sessions, or task queues?")
+
+**If the codebase contains no recognizable config files:**
+- Inform the user: "I wasn't able to auto-detect the tech stack from the codebase. Let me ask you directly."
+- Fall through to Step 2.1 as normal
+
+**After user responds to the auto-detected summary:**
+- Merge corrections and additions into the working summary
+- Proceed to Step 2.2 (Analyze and Clarify) with the merged information — skip Step 2.1 since the auto-detection replaces the initial gathering
+- If the user confirmed everything and has nothing to add, proceed directly to Step 2.3 (Present Summary and Confirm)
+
 ### Step 2.1: Initial Information Gathering
 
-Use `AskUserQuestion` to gather the following information:
+If auto-detection was skipped or produced no results, use `AskUserQuestion` to gather the following information:
 
 **Questions:**
 1. What programming language(s) and versions will be used?
@@ -316,9 +363,60 @@ Use `AskUserQuestion` to present and ask for confirmation.
 
 ## Section 4: Development and Testing Process
 
+### Step 4.0: Auto-Detect Development and Testing Setup From Codebase
+
+Before asking the user questions, proactively scan the codebase for files that reveal the development and testing setup. Use `Glob` and `Read` to check for the following (skip any that don't exist):
+
+**Setup and build files:**
+- `Makefile`, `Taskfile.yml`, `justfile` — look for targets like `setup`, `install`, `dev`, `build`, `test`, `lint`
+- `package.json` `scripts` section — look for `dev`, `start`, `build`, `test`, `lint` scripts
+- `docker-compose.yml` / `docker-compose.yaml` — identify services, ports, volumes
+- `Dockerfile` — identify build stages and runtime setup
+- `.env.example`, `.env.sample` — identify required environment variables
+- `flake.nix`, `shell.nix`, `default.nix` — identify Nix-based dev shells, build derivations, and `nix develop`/`nix build` workflows; check `devShells`, `packages`, and `buildInputs` for available tooling and commands
+
+**Test configuration:**
+- `jest.config.*`, `vitest.config.*`, `pytest.ini`, `pyproject.toml [tool.pytest]`, `setup.cfg [tool:pytest]`
+- `.mocharc.*`, `karma.conf.*`, `cypress.config.*`, `playwright.config.*`
+- `tests/`, `test/`, `spec/`, `__tests__/` directories — identify test structure and types
+- `conftest.py`, `fixtures/` — identify test infrastructure
+
+**CI/CD pipelines:**
+- `.github/workflows/*.yml`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci/config.yml`
+- Extract build steps, test commands, and deployment stages
+
+**Development environment:**
+- `README.md`, `CONTRIBUTING.md`, `docs/setup.md` — look for setup instructions
+- `.devcontainer/`, `.vscode/launch.json`, `.idea/` — identify IDE and container configs
+- `.pre-commit-config.yaml` — identify pre-commit hooks
+- `flake.nix` `devShells` output — identify Nix-managed development environments (tools, shell hooks, environment variables available via `nix develop`)
+
+**From each discovered file, extract:**
+- Setup steps and prerequisites
+- Build commands and processes
+- How to run the application locally (commands, ports, URLs)
+- Test types available and how to run them
+- CI/CD pipeline structure
+- Pre-commit hooks or automated checks
+
+**Present the auto-detected findings:**
+Format the discovered dev/testing setup as a preliminary summary and present it to the user using `AskUserQuestion`:
+- "I scanned your codebase and detected the following development and testing setup. Please review and let me know what's correct, what's missing, and what needs correction:"
+- List each category with discovered items
+- Highlight any items you're uncertain about (e.g., "Found Playwright config but no test files — is E2E testing set up yet?")
+
+**If the codebase contains no recognizable dev/test config files:**
+- Inform the user: "I wasn't able to auto-detect the development setup from the codebase. Let me ask you directly."
+- Fall through to Step 4.1 as normal
+
+**After user responds to the auto-detected summary:**
+- Merge corrections and additions into the working summary
+- Proceed to Step 4.2 (Analyze and Clarify) with the merged information — skip Step 4.1 since the auto-detection replaces the initial gathering
+- If the user confirmed everything and has nothing to add, proceed directly to Step 4.3 (Present Summary and Confirm)
+
 ### Step 4.1: Initial Information Gathering
 
-Use `AskUserQuestion` to gather the following information:
+If auto-detection was skipped or produced no results, use `AskUserQuestion` to gather the following information:
 
 **Questions:**
 1. How do you set up the development environment? (dependencies, configs, etc.)
