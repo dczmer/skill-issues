@@ -2,9 +2,9 @@
 
 ---
 name: project-plan-formulation
-description: Conducts iterative interviews to develop comprehensive project planning documents covering overview, tech stack, architecture, development process, conventions, and security. Use when the user asks to "create a project plan", "document a project", "conduct project planning interview", or mentions needing structured project documentation. Can accept supplemental context or instructions when invoked.
+description: Conducts iterative interviews to develop comprehensive project planning documents covering overview, tech stack, architecture, development process, conventions, and security. Use when the user asks to "create a project plan", "document a project", "conduct project planning interview", or mentions needing structured project documentation. Can accept supplemental context or instructions when invoked. Supports targeting a specific section with --section.
 allowed-tools: "Read,Grep,Glob,Bash,AskUserQuestion,Write"
-version: "1.1.0"
+version: "1.2.0"
 author: "Claude Code"
 ---
 
@@ -37,7 +37,14 @@ You can provide supplemental context at invocation:
 - Specific instructions (e.g., "focus on security aspects")
 - Existing documentation to incorporate
 
-The interview typically takes 10-20 minutes depending on project complexity.
+**Section targeting:** To work on a specific section only, use the `--section` flag:
+- `/project-plan-formulation --section 2` (by number)
+- `/project-plan-formulation --section "Tech Stack"` (by name)
+- `/project-plan-formulation --section security` (by keyword match)
+
+Section targeting requires an existing `PROJECT_PLAN.md` to load context from. The targeted section will go through the normal gather/clarify/confirm cycle, and the updated content will be merged back into the existing plan.
+
+The interview typically takes 10-20 minutes for a full run, or 3-5 minutes when targeting a single section.
 
 ---
 
@@ -74,9 +81,31 @@ Check if the user provided any supplemental context or instructions at invocatio
 4. Ask if there's anything else to review before starting
 
 **If no supplemental context:**
-- Proceed directly to Section 1
+- Proceed directly to Section 1 (or the targeted section, if `--section` was used)
 - Note that you'll rely on the user's knowledge during the interview
 - Mention that you can read files during the interview if references come up
+
+### Step 0.3: Resolve Section Targeting
+
+Check if the user provided a `--section` flag in the invocation.
+
+**If `--section` is present:**
+1. Parse the section identifier. Match against sections using any of:
+   - **Number:** `1` through `6` maps directly to Sections 1-6
+   - **Exact name:** e.g., `"Tech Stack"`, `"Architecture Overview"`
+   - **Keyword:** Case-insensitive partial match (e.g., `security` matches "Security Considerations", `dev` matches "Development and Testing Process", `conventions` matches "Conventions and Rules")
+2. If the match is ambiguous (e.g., keyword matches multiple sections), use `AskUserQuestion` to ask the user to clarify which section they meant, listing the matching candidates.
+3. If no match is found, inform the user that the section identifier was not recognized, list valid section names and numbers, and ask them to try again.
+4. **Require an existing plan:** If `PROJECT_PLAN.md` does not exist, inform the user that section targeting requires an existing plan to provide context, and ask whether to proceed with a full interview instead.
+5. Once the target section is resolved:
+   - Load the existing `PROJECT_PLAN.md` content (if not already loaded in Step 0.1)
+   - Skip directly to the targeted section's Step X.1
+   - Pre-populate the section with existing content from the plan (same as the "Update it" flow)
+   - After the targeted section is approved, skip to Step 7 (Final Assembly) — merge the updated section back into the existing plan, preserving all other sections unchanged
+   - Present the updated plan and proceed through Steps 7.2-7.4 as normal
+
+**If `--section` is not present:**
+- Proceed with the normal sequential flow starting at Section 1
 
 ---
 
