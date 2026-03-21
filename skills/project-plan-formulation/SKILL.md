@@ -3,8 +3,8 @@
 ---
 name: project-plan-formulation
 description: Conducts iterative interviews to develop comprehensive project planning documents covering overview, tech stack, architecture, development process, conventions, and security. Use when the user asks to "create a project plan", "document a project", "conduct project planning interview", or mentions needing structured project documentation. Can accept supplemental context or instructions when invoked. Supports targeting a specific section with --section.
-allowed-tools: "Read,Grep,Glob,Bash,AskUserQuestion,Write"
-version: "1.6.0"
+allowed-tools: "Read,Grep,Glob,Bash,AskUserQuestion,Write,TodoWrite"
+version: "1.7.0"
 author: "Claude Code"
 ---
 
@@ -135,6 +135,27 @@ interview_state:
    - `"section_target"` — `--section` flag used
    - `"targeted_update"` — user chose "Targeted update" in Step 0.1
 7. **Present state on request:** If the user asks "where are we?" or "what's the status?", display a summary derived from the state object showing each section's status and the current step.
+
+### Using TodoWrite for Progress Visibility
+
+In addition to the internal state object, use the `TodoWrite` tool to give the user visible progress tracking in their UI. This is especially helpful during long interview sessions.
+
+**At the start of the interview (after Step 0 resolves the mode):** Create a todo list with one item per section that will be interviewed. For example, in full mode:
+- "Section 1: Project Overview" — pending
+- "Section 2: Tech Stack" — pending
+- "Section 3: Architecture Overview" — pending
+- "Section 4: Development and Testing Process" — pending
+- "Section 5: Conventions and Rules" — pending
+- "Section 6: Security Considerations" — pending
+- "Final assembly and save" — pending
+
+**During the interview:**
+- Mark the current section as `in_progress` when you begin gathering for it
+- Mark the section as `completed` when the user approves it
+- Mark skipped sections as `cancelled`
+- In targeted update or section-target modes, only create todos for the sections being interviewed (not carried-forward sections)
+
+**Keep the todo list in sync with the internal state object.** Update todos immediately on status changes — do not batch updates.
 
 ---
 
