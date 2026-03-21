@@ -4,7 +4,7 @@
 name: project-plan-formulation
 description: Conducts iterative interviews to develop comprehensive project planning documents covering overview, tech stack, architecture, development process, conventions, and security. Use when the user asks to "create a project plan", "document a project", "conduct project planning interview", or mentions needing structured project documentation. Can accept supplemental context or instructions when invoked. Supports targeting a specific section with --section.
 allowed-tools: "Read,Grep,Glob,Bash,AskUserQuestion,Write"
-version: "1.5.0"
+version: "1.6.0"
 author: "Claude Code"
 ---
 
@@ -73,6 +73,68 @@ Section targeting requires an existing `PROJECT_PLAN.md` to load context from. T
 **Targeted updates:** When an existing `PROJECT_PLAN.md` is detected, you can choose "Targeted update" to describe what has changed (e.g., "we switched from Redis to Memcached"). The skill will identify which sections are affected and only re-interview those, carrying forward all unaffected sections unchanged.
 
 The interview typically takes 10-20 minutes for a full run, 3-5 minutes when targeting a single section, or 5-10 minutes for a targeted update depending on how many sections are affected.
+
+---
+
+## State Tracking
+
+Throughout the interview, maintain an internal state object to track progress. This ensures resilience to context loss and provides a clear snapshot of where the interview stands at any point.
+
+### State Object Schema
+
+```yaml
+interview_state:
+  mode: "full" | "section_target" | "targeted_update" | "update"
+  target_section: null | 1-6          # only set in section_target mode
+  affected_sections: []               # only set in targeted_update mode
+  existing_plan_loaded: true | false
+  sections:
+    overview:
+      status: "pending" | "in_progress" | "approved" | "skipped" | "carried_forward"
+      iteration: 0                    # number of gather/clarify/confirm cycles completed
+      content: null | "<approved markdown content>"
+    tech_stack:
+      status: "pending"
+      iteration: 0
+      content: null
+    architecture:
+      status: "pending"
+      iteration: 0
+      content: null
+    development_and_testing:
+      status: "pending"
+      iteration: 0
+      content: null
+    conventions_and_rules:
+      status: "pending"
+      iteration: 0
+      content: null
+    security:
+      status: "pending"
+      iteration: 0
+      content: null
+  current_step: "0.1"                 # tracks which step is currently active
+  started_at: null | "<ISO 8601 timestamp>"
+  last_updated: null | "<ISO 8601 timestamp>"
+```
+
+### State Management Rules
+
+1. **Initialize** the state object at the very start of the skill invocation, before Step 0.1.
+2. **Update `current_step`** each time you transition to a new step or sub-step.
+3. **Update section status** immediately when a section's status changes:
+   - `"pending"` → `"in_progress"` when you begin gathering for that section
+   - `"in_progress"` → `"approved"` when the user confirms the summary
+   - `"pending"` or `"in_progress"` → `"skipped"` when the user skips
+   - `"pending"` → `"carried_forward"` when content is preserved unchanged (targeted update or section-target modes)
+4. **Increment `iteration`** each time you complete a full gather → clarify → confirm cycle for a section (including revision loops).
+5. **Store `content`** with the approved markdown content for each section once approved.
+6. **Set `mode`** during Step 0 based on the user's choices:
+   - `"full"` — new plan, full interview
+   - `"update"` — existing plan, full re-interview
+   - `"section_target"` — `--section` flag used
+   - `"targeted_update"` — user chose "Targeted update" in Step 0.1
+7. **Present state on request:** If the user asks "where are we?" or "what's the status?", display a summary derived from the state object showing each section's status and the current step.
 
 ---
 
