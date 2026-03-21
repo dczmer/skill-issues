@@ -4,7 +4,7 @@
 name: project-plan-formulation
 description: Conducts iterative interviews to develop comprehensive project planning documents covering overview, tech stack, architecture, development process, conventions, and security. Use when the user asks to "create a project plan", "document a project", "conduct project planning interview", or mentions needing structured project documentation. Can accept supplemental context or instructions when invoked. Supports targeting a specific section with --section.
 allowed-tools: "Read,Grep,Glob,Bash,AskUserQuestion,Write"
-version: "1.4.0"
+version: "1.5.0"
 author: "Claude Code"
 ---
 
@@ -27,6 +27,32 @@ The skill follows a structured, iterative approach:
 - You must approve each section before moving to the next (blocking gates)
 - You can navigate back to revise sections, skip sections, or stop at any time
 - Final document is reviewed, modified if needed, and saved to the project root
+
+### Naming Conventions in This Skill
+
+This skill uses two distinct naming schemes. Understanding the distinction helps agents reliably map between the interview workflow and the output document.
+
+**Workflow headings (in this SKILL.md file):**
+- `## Step N:` — Procedural steps that are not interview content sections (Step 0: setup/loading, Step 7: final assembly). These do not map to output document sections.
+- `## Section N: Title` — The 6 interview content sections (Sections 1-6). Each maps 1:1 to an output document heading.
+- `### Step N.M:` — Sub-steps within a Step or Section (e.g., Step 2.0, Step 1.1, Step 7.4). These are workflow instructions, not output headings.
+
+**Output document headings (in the generated PROJECT_PLAN.md):**
+- `## Title` — No numbering, no "Section" prefix. The output uses clean heading names only (e.g., `## Overview`, `## Tech Stack`, `## Architecture Overview`).
+
+**Interview summary headings (shown to the user mid-interview for confirmation):**
+- `## Section N: Title ✓` — These are transient, shown only during the interview to help the user track progress. They are **not** carried into the final output document.
+
+**Mapping between interview sections and output headings:**
+
+| Workflow heading | Output heading |
+|---|---|
+| Section 1: Project Overview | `## Overview` |
+| Section 2: Tech Stack | `## Tech Stack` |
+| Section 3: Architecture Overview | `## Architecture Overview` |
+| Section 4: Development and Testing Process | `## Development and Testing Process` |
+| Section 5: Conventions and Rules | `## Conventions and Rules` |
+| Section 6: Security Considerations | `## Security Considerations` |
 
 ### Usage
 
