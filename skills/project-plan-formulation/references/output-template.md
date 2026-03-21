@@ -5,16 +5,16 @@
 **Last Updated**: 2026-03-20
 
 ## Table of Contents
-1. [Overview](#overview)
-2. [Tech Stack](#tech-stack)
-3. [Architecture Overview](#architecture-overview)
-4. [Development and Testing Process](#development-and-testing-process)
-5. [Conventions and Rules](#conventions-and-rules)
-6. [Security Considerations](#security-considerations)
+1. [Overview](#1-overview)
+2. [Tech Stack](#2-tech-stack)
+3. [Architecture Overview](#3-architecture-overview)
+4. [Development and Testing Process](#4-development-and-testing-process)
+5. [Conventions and Rules](#5-conventions-and-rules)
+6. [Security Considerations](#6-security-considerations)
 
 ---
 
-## Overview
+## 1. Overview
 
 **What it is:**
 A web-based application for managing customer support tickets. It provides a centralized interface for support teams to track, prioritize, and resolve customer issues efficiently.
@@ -51,7 +51,7 @@ A web-based application for managing customer support tickets. It provides a cen
 
 ---
 
-## Tech Stack
+## 2. Tech Stack
 
 **Languages:**
 - Python 3.11+ (backend)
@@ -90,7 +90,7 @@ A web-based application for managing customer support tickets. It provides a cen
 
 ---
 
-## Architecture Overview
+## 3. Architecture Overview
 
 **System Components:**
 - **Web API** (FastAPI) - RESTful API, handles business logic
@@ -139,7 +139,7 @@ A web-based application for managing customer support tickets. It provides a cen
 
 ---
 
-## Development and Testing Process
+## 4. Development and Testing Process
 
 **Environment Setup:**
 1. Clone repository
@@ -193,7 +193,7 @@ celery -A worker worker --loglevel=info  # Workers only
 
 ---
 
-## Conventions and Rules
+## 5. Conventions and Rules
 
 **Code Organization:**
 ```
@@ -261,7 +261,7 @@ frontend/
 
 ---
 
-## Security Considerations
+## 6. Security Considerations
 
 **Authentication:**
 - JWT tokens for API authentication
