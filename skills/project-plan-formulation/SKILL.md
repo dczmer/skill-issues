@@ -4,7 +4,7 @@
 name: project-plan-formulation
 description: Conducts iterative interviews to develop comprehensive project planning documents covering overview, tech stack, architecture, development process, conventions, and security. Use when the user asks to "create a project plan", "document a project", "conduct project planning interview", or mentions needing structured project documentation. Can accept supplemental context or instructions when invoked. Supports targeting a specific section with --section.
 allowed-tools: "Read,Grep,Glob,Bash,AskUserQuestion,Write,TodoWrite"
-version: "1.8.0"
+version: "1.9.0"
 author: "Claude Code"
 ---
 
@@ -946,63 +946,33 @@ Throughout the interview, users can navigate flexibly:
 
 ---
 
-## Error Handling Scenarios
+## Error Handling
 
-### Partial Completion
+This skill handles several error scenarios that may arise during the interview. **Load `references/error-handling.md` when one of these situations occurs:**
 
-If user stops mid-interview:
-1. Confirm they want to stop
-2. Offer to save partial document
-3. Mark incomplete sections with: `_[Section incomplete - stopped during interview]_`
-4. Provide resume instructions
+- User stops mid-interview (partial completion)
+- User provides information contradicting earlier sections
+- User repeatedly answers "I don't know" to questions
+- File write fails at the end of the interview
 
-### Contradictory Information
-
-If user provides info that contradicts earlier sections:
-1. Point out the contradiction
-2. Ask which is correct
-3. Offer to update the earlier section
-4. Show both sections for review
-
-### Unable to Answer
-
-If user repeatedly says "I don't know":
-1. Offer codebase exploration
-2. Suggest they consult with team members
-3. Mark section for future completion
-4. Offer to skip and continue with other sections
-
-### File Write Failure
-
-If `Write` fails:
-1. Show the error message
-2. Ask for alternative save location
-3. Offer to display full content for manual copy-paste
-4. Suggest checking file permissions
+Load the reference file for detailed handling instructions for each scenario.
 
 ---
 
 ## Tips for Best Results
 
-**For Users:**
-- Have existing documentation handy (README, ADRs, etc.)
-- Think through architectural decisions beforehand
-- Be specific about constraints and requirements
-- Don't worry about perfect wording - you can refine later
-
-**For AI:**
-- Build on information from previous sections
-- Reference earlier answers when relevant in later questions
-- Be specific in questions, not generic
-- Acknowledge and validate user responses
-- Keep summaries concise but complete
-- Use proper markdown formatting consistently
+Optional guidance for users and AI assistants is available in `references/best-practices.md`. Load this file if:
+- The user asks for tips before starting
+- You want to review best practices before beginning an interview
+- You need guidance on handling specific interview situations
 
 ---
 
 ## Related Documentation
 
 - Example output structure: `references/output-template.md`
+- Error handling: `references/error-handling.md` (load on error scenarios)
+- Best practices: `references/best-practices.md` (optional guidance)
 - For post-creation updates, just edit `PROJECT_PLAN.md` directly
 - Consider checking this document into git for team visibility
 - Link to this from `AGENTS.md` or `CLAUDE.md` for AI context
