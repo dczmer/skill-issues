@@ -3,7 +3,6 @@ name: feature-implementation
 description: Implements a feature from a saved specification document using TDD approach. Use when user asks to "implement a feature", "start implementation", or after completing feature-planning.
 allowed-tools: "Read,Grep,Glob,Bash,Write,Edit,todowrite,skill"
 version: "1.0.0"
-author: "Claude Code"
 ---
 
 ## Introduction
@@ -73,10 +72,12 @@ Use `Glob` to find all feature planning documents:
 
 Exclude `README.md` from results.
 
+For each plan found, use `Read` to load the file and parse the YAML frontmatter. Only include plans where the `status` field is `"open"`. Plans with `status: "closed"` or `status: "done"` should be filtered out.
+
 ### Step 0.2: Handle Results
 
-**If no plans found:**
-1. Inform user: "No feature specification documents found in ./feature-plans/"
+**If no open plans found:**
+1. Inform user: "No feature specification documents with status 'open' found in ./feature-plans/"
 2. Suggest: "Run `/feature-planning` first to create a specification"
 3. Exit the skill
 
@@ -87,7 +88,7 @@ Exclude `README.md` from results.
 4. If "Yes", set `plan_file` and proceed to Step 6
 
 **If multiple plans found:**
-1. Present list of available plans
+1. Present list of available plans (showing feature names)
 2. Use `question` tool to prompt: "Which feature would you like to implement?"
 3. Options: List of feature names, "Cancel"
 4. After selection, set `plan_file` and proceed to Step 6
@@ -333,6 +334,23 @@ Use the `question` tool:
 **If No:**
 - Present commit summary and branch name for manual PR creation
 
+### Step 10.3: Update Feature Plan Status
+
+After successful completion, update the feature plan document's status to `"done"`:
+
+1. Use `Read` to load the feature plan file
+2. Use `Edit` to change the YAML frontmatter from `status: "open"` to `status: "done"`
+3. Use `Write` to save the updated file
+
+The feature plan document should now have:
+
+```yaml
+---
+name: "<FEATURE_NAME>"
+status: "done"
+---
+```
+
 ---
 
 ## Navigation and Special Commands
@@ -341,9 +359,19 @@ Use the `question` tool:
 - "next" or "continue" → Proceed to next step
 - "looks good" or "approved" → Approve current step
 
-**Stopping:**
-- "stop" or "cancel" → End implementation
-- Offer to save any partial changes
+**Stopping (Abort):**
+- "stop" or "cancel" or "abort" → End implementation
+- Ask user: "Would you like to mark this feature as closed?"
+- Options: "Yes, close it", "No, keep it open"
+
+**If user confirms closing:**
+1. Update the feature plan's YAML frontmatter from `status: "open"` to `status: "closed"`
+2. Use `Write` to save the updated file
+3. Exit the skill
+
+**If user wants to keep it open:**
+- Exit the skill without changing status
+- The feature plan remains available for future implementation attempts
 
 ---
 
