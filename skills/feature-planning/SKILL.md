@@ -347,9 +347,29 @@ Use the `question` tool to present and ask for confirmation.
 
 Once all sections are complete:
 1. Assemble all approved section content
-2. Add metadata (date, version)
-3. Generate table of contents
-4. Format consistently with proper markdown
+2. Add YAML frontmatter with `name` and `status` fields
+3. Add metadata (date, version)
+4. Generate table of contents
+5. Format consistently with proper markdown
+
+### Step 5.1.1: YAML Frontmatter Format
+
+The document must start with YAML frontmatter:
+
+```yaml
+---
+name: "<FEATURE_NAME>"
+status: "open"
+---
+```
+
+- `name`: The sanitized feature name (same as filename without `.md`)
+- `status`: Always initialized as `"open"` when created by this skill
+
+Valid status values:
+- `"open"` - Feature plan is active and ready for implementation
+- `"closed"` - Feature plan is cancelled or deprecated
+- `"done"` - Feature has been implemented
 
 ### Step 5.2: Ensure Directory Exists
 
@@ -362,6 +382,22 @@ mkdir -p ./feature-plans
 ### Step 5.3: Write to File
 
 Use the sanitized `FEATURE_NAME` as the filename with `.md` extension.
+
+The document structure must be:```markdown
+---
+name: "<FEATURE_NAME>"status: "open"
+---
+
+[Table of Contents]
+
+[Section 1: Feature Name and Description]
+
+[Section 2: Feature Requirements]
+
+[Section 3: Constraints]
+
+[Section 4: Feature Verification Testing]
+```
 
 Use `Write` tool to save the document to `./feature-plans/FEATURE_NAME.md`.
 
