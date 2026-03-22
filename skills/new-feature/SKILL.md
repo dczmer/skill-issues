@@ -86,7 +86,7 @@ feature_state:
 
 ### Step 0.1: Check for Existing Feature Document
 
-Use `Glob` to check if a `FEATURE_NAME.md` file already exists in the project root (where FEATURE_NAME is a sanitized feature name from a previous run).
+Use `Glob` to check if a `features/FEATURE_NAME.md` file already exists (where FEATURE_NAME is a sanitized feature name from a previous run).
 
 **If feature document exists:**
 1. Use `Read` to load the full contents
@@ -363,11 +363,11 @@ Once all sections are complete:
 
 Use the sanitized `FEATURE_NAME` as the filename with `.md` extension.
 
-Use `Write` tool to save the document to the project root.
+Ensure the `./features/` directory exists, then use `Write` tool to save the document to `./features/FEATURE_NAME.md`.
 
 **Success message:**
 ```
-✓ Feature specification saved to: /path/to/FEATURE_NAME.md
+✓ Feature specification saved to: ./features/FEATURE_NAME.md
 ```
 
 ---
