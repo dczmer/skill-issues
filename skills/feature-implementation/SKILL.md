@@ -204,15 +204,20 @@ Run the tests to confirm they fail as expected.
 
 ### Step 8.3: Present Tests for Review (BLOCKING STEP)
 
+**BLOCKING STEP:** Tests MUST be approved before proceeding to implementation. Do NOT proceed with Step 8.4 until the user explicitly approves the tests.
+
 Use the `question` tool:
 - "Here are the tests for [function_name]. Please review and let me know if they look correct or if any modifications are needed."
 - Show the test code
 - Options: "Looks good, proceed", "Modify tests"
 
+**BLOCKING GATE:** Wait for user confirmation before proceeding.
+
 **If user requests modifications:**
 1. Update the tests
 2. Show revised tests
 3. Wait for approval
+4. **Repeat until tests are approved**
 
 **If approved:**
 - Proceed to Step 8.4
