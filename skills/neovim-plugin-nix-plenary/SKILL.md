@@ -179,9 +179,7 @@ end)
             packages.myVimPackage = with pkgs.vimPlugins; {
               start = [
                 plenary-nvim
-                nvim-cmp
-                cmp-buffer
-                cmp-path
+                # additional vim plugins for dependencies
               ];
             };
           };
@@ -196,6 +194,7 @@ end)
       in
       {
         packages = {
+          # expose development tool packages for the agent to use
           luacheck = pkgs.lua54Packages.luacheck;
           stylua = pkgs.stylua;
         };
@@ -218,7 +217,6 @@ end)
 
           shellHook = ''
             echo "Neovim plugin development environment loaded"
-            echo "Run 'nix run .#nvim-test -- -u scripts/minimal-init.lua --headless -c \"lua ...\"' to run tests"
           '';
         };
       }
@@ -232,23 +230,18 @@ end)
 
 ```lua
 -- Minimal neovim configuration for testing plugin
+vim.g.mapleader = ","
+vim.g.maplocalleader = "\\"
+vim.cmd([[
+    filetype on
+    filetype indent on
+    filetype plugin on
+    syntax on
+]])
+vim.cmd.colorscheme("elflord")
 
--- Set runtimepath to include plugin and dependencies
-vim.opt.runtimepath:append(vim.fn.fnamemodify(debug.getinfo(1).source:match("@(.*/)"), ":p") .. "..")
-vim.opt.runtimepath:append(vim.fn.fnamemodify(debug.getinfo(1).source:match("@(.*/)"), ":p") .. "../../lua")
-
--- Set wiki_root to test_root for tests
-vim.g.davewiki_test_root = vim.fn.fnamemodify(debug.getinfo(1).source:match("@(.*/)"), ":p") .. "../test_root"
-
--- Minimal plugin setup for testing
-vim.opt.runtimepath:append(vim.g.davewiki_test_root)
-
--- Suppress startup messages
-vim.opt.shortmess:append("I")
-
--- Minimal UI
-vim.opt.number = false
-vim.opt.relativenumber = false
+-- Add the current directory (structured as a vim plugin directory) to the `runtimepath`.
+vim.opt.runtimepath:append(".")
 ```
 
 ---
@@ -307,7 +300,7 @@ nix run .#nvim-test -- -u scripts/minimal-init.lua --headless -c 'PlenaryBustedF
 ### Testing Rules
 
 - **Never mock** vim internal functions or filesystem operations unless there is no alternative.
-- Tests run against **real files** in `test_root/` — no mocking the filesystem.
+- Tests run against **real files** in a folder of test files — no mocking the filesystem without approval from the user.
 
 ### Test File Structure
 

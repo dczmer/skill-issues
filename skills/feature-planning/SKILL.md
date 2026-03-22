@@ -3,7 +3,6 @@ name: feature-planning
 description: Interactive analysis and requirements gathering process for creating feature specification documents. Use when user asks to "plan a feature", "create a feature plan", "feature spec", or similar requests.
 allowed-tools: "Read,Grep,Glob,Bash,Write,todowrite"
 version: "1.0.0"
-author: "Claude Code"
 ---
 
 ## Introduction
