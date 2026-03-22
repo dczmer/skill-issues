@@ -14,6 +14,7 @@ The skill generates a structured `FEATURE_NAME.md` document in `./feature-plans/
 2. **Feature Requirements** - Detailed functional requirements
 3. **Constraints** - Technical, business, and operational constraints
 4. **Feature Verification Testing** - How the feature will be tested and validated
+5. **Deliverables and Artifacts** - Public functions, user-facing features, documentation, and other outputs
 
 ### Process Flow
 
@@ -55,6 +56,10 @@ feature_state:
       iteration: 0
       content: null
     verification:
+      status: "pending" | "in_progress" | "approved" | "skipped"
+      iteration: 0
+      content: null
+    deliverables:
       status: "pending" | "in_progress" | "approved" | "skipped"
       iteration: 0
       content: null
@@ -340,9 +345,76 @@ Use the `question` tool to present and ask for confirmation.
 
 ---
 
-## Step 5: Final Assembly and Save
+## Section 5: Deliverables and Artifacts
 
-### Step 5.1: Compile Full Feature Document
+### Step 5.1: Initial Information Gathering
+
+Use the `question` tool to gather the following information:
+
+**Questions:**
+1. What public functions, APIs, or interfaces will this feature expose?
+2. What user-facing features or UI components will be created?
+3. What documentation needs to be created or updated? (README, API docs, user guides, etc.)
+4. What configuration files, migrations, or infrastructure changes are needed?
+5. Are there any artifacts for deployment, packaging, or distribution?
+
+Wait for the user's response.
+
+### Step 5.2: Analyze and Clarify
+
+After receiving the initial response:
+1. Identify any missing deliverables or unclear artifact definitions
+2. Formulate 2-4 specific follow-up questions
+
+Example clarifications might cover:
+- Specific function signatures or API endpoints
+- File locations and naming conventions
+- Documentation format and location
+- Migration scripts or seed data
+- Version compatibility notes
+
+Use the `question` tool to ask these clarifying questions and wait for response.
+
+### Step 5.3: Present Summary and Confirm (BLOCKING STEP)
+
+Format the section summary:
+
+```markdown
+## Section 5: Deliverables and Artifacts ✓
+
+**Public Functions/APIs:**
+- `[function_name()]` - [Brief description of what it does]
+- `[endpoint]` - [API endpoint description]
+
+**User-Facing Features:**
+- [Feature/component 1]
+- [Feature/component 2]
+
+**Documentation:**
+- [README updates]
+- [API documentation]
+- [User guides]
+
+**Configuration/Infrastructure:**
+- [Config files]
+- [Migration scripts]
+- [Environment variables]
+
+**Deployment Artifacts:**
+- [Package files]
+- [Docker images]
+- [Release notes]
+```
+
+Use the `question` tool to present and ask for confirmation.
+
+**BLOCKING GATE:** Must wait for approval, handle corrections, then proceed.
+
+---
+
+## Step 6: Final Assembly and Save
+
+### Step 6.1: Compile Full Feature Document
 
 Once all sections are complete:
 1. Assemble all approved section content
@@ -351,7 +423,7 @@ Once all sections are complete:
 4. Generate table of contents
 5. Format consistently with proper markdown
 
-### Step 5.1.1: YAML Frontmatter Format
+### Step 6.1.1: YAML Frontmatter Format
 
 The document must start with YAML frontmatter:
 
@@ -370,7 +442,7 @@ Valid status values:
 - `"closed"` - Feature plan is cancelled or deprecated
 - `"done"` - Feature has been implemented
 
-### Step 5.2: Ensure Directory Exists
+### Step 6.2: Ensure Directory Exists
 
 Use `Bash` to create the feature-plans directory if it doesn't exist:
 
@@ -378,7 +450,7 @@ Use `Bash` to create the feature-plans directory if it doesn't exist:
 mkdir -p ./feature-plans
 ```
 
-### Step 5.3: Write to File
+### Step 6.3: Write to File
 
 Use the sanitized `FEATURE_NAME` as the filename with `.md` extension.
 
@@ -397,6 +469,8 @@ status: "open"
 [Section 3: Constraints]
 
 [Section 4: Feature Verification Testing]
+
+[Section 5: Deliverables and Artifacts]
 ```
 
 Use `Write` tool to save the document to `./feature-plans/FEATURE_NAME.md`.
