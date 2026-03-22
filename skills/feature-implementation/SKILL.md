@@ -1,4 +1,5 @@
----name: feature-implementation
+---
+name: feature-implementation
 description: Implements a feature from a saved specification document using TDD approach. Use when user asks to "implement a feature", "start implementation", or after completing feature-planning.
 allowed-tools: "Read,Grep,Glob,Bash,Write,Edit,todowrite,skill"
 version: "1.0.0"
@@ -18,7 +19,8 @@ This skill implements a feature from a previously created specification document
 
 1. **Step 0:** Select feature specification to implement
 2. **Step 6:** Create feature branch (with user approval)
-3. **Step 7:** Implementation planning4. **Step 8:** TDD implementation loop
+3. **Step 7:** Implementation planning
+4. **Step 8:** TDD implementation loop
 5. **Step 9:** Final verification
 6. **Step 10:** Git operations and PR creation
 

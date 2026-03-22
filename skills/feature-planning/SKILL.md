@@ -385,7 +385,8 @@ Use the sanitized `FEATURE_NAME` as the filename with `.md` extension.
 
 The document structure must be:```markdown
 ---
-name: "<FEATURE_NAME>"status: "open"
+name: "<FEATURE_NAME>"
+status: "open"
 ---
 
 [Table of Contents]
