@@ -16,10 +16,19 @@ They are planning artifacts that capture requirements, constraints, and verifica
 
 Each plan document (`FEATURE_NAME.md`) contains:
 
+- **YAML Frontmatter:** Metadata including `name` and `status`
 - **Section 1:** Feature name and description
 - **Section 2:** Feature requirements
 - **Section 3:** Constraints
 - **Section 4:** Feature verification testing
+
+## Status Values
+
+The `status` field tracks the feature lifecycle:
+
+- `"open"` - Feature plan is active and ready for implementation
+- `"done"` - Feature has been successfully implemented
+- `"closed"` - Feature plan is cancelled or deprecated
 
 ## Workflow
 
