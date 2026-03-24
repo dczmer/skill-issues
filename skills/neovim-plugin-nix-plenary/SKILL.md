@@ -309,7 +309,151 @@ nix run .#nvim-test -- -u scripts/minimal-init.lua --headless -c 'PlenaryBustedF
 - **Examples:**
   - `lua/davewiki/init.lua` → `tests/lua/davewiki/init_spec.lua`
   - `lua/davewiki/core.lua` → `tests/lua/davewiki/core_spec.lua`
+
+---
+
+## Exploring Neovim Documentation
+
+When building a Neovim plugin, you often need to reference internal APIs, vim functions, and configuration options. Here are the best ways to access Neovim documentation:
+
+### Method 1: Local Runtime Documentation
+
+If you know the Neovim installation location, documentation files are stored under `runtime/doc/`:
+
+```bash
+# Find Neovim runtime path
+nix run .#nvim-test -- --headless -c 'echo $VIMRUNTIME' -c 'qa!' 2>&1 | head -1
+
+# Common locations in Nix store
+ls $(nix build .#nvim-test --no-link --print-out-paths)/share/nvim/runtime/doc/
 ```
+
+Documentation files use the `.txt` extension (e.g., `api.txt`, `lua.txt`, `options.txt`).
+
+### Method 2: Online Documentation Browser
+
+For quick reference without starting Neovim:
+
+**Vim documentation (HTML):** https://vimdoc.sourceforge.net/htmldoc/
+
+Browse categories like:
+- `eval.html` - Vimscript functions and expressions
+- `options.html` - Configuration options
+- `autocmd.html` - Autocommands
+- `map.html` - Key mappings
+
+**Neovim-specific docs:** https://neovim.io/doc/user/
+
+- `api.html` - Lua API functions
+- `lua.html` - Lua scripting guide
+- `lsp.html` - LSP client API
+- `treesitter.html` - Treesitter integration
+
+### Method 3: Headless Neovim Help Commands
+
+Query documentation directly from the command line:
+
+```bash
+# View help for a specific topic and output to stdout
+nix run .#nvim-test -- --headless -c "h quickfix" -c ":!cat %" -c "qa" 2>/dev/null
+
+# Search for a pattern in help files
+nix run .#nvim-test -- --headless -c "helpgrep lua_api" -c "cfirst" -c ":!cat %" -c "qa" 2>/dev/null
+
+# List all functions matching a pattern
+nix run .#nvim-test -- --headless -c "h vim.api.nvim_" -c ":!cat %" -c "qa" 2>/dev/null
+```
+
+**Common help topics for plugin development:**
+- `:h api` - Lua API reference
+- `:h lua-guide` - Lua scripting in Neovim
+- `:h autocommand` - Event handling
+- `:h map` - Key mapping functions
+- `:h vim.opt` - Option manipulation
+- `:h vim.fn` - Vimscript function access
+- `:h lsp` - Language Server Protocol
+- `:h treesitter` - Syntax tree parsing
+
+### Method 4: Lua API Reference
+
+For Lua-specific development:
+
+```bash
+# List all vim.api functions
+nix run .#nvim-test -- --headless -c "lua print(vim.inspect(vim.api))" -c "qa!" 2>&1
+
+# Check a specific API function signature
+nix run .#nvim-test -- --headless -c "lua print(vim.inspect(vim.api.nvim_create_autocmd))" -c "qa!" 2>&1
+```
+
+### Method 5: Type Annotations with lua-language-server
+
+The `lua-language-server` included in the dev shell provides inline documentation:
+
+1. Hover over Neovim API calls in your editor to see signatures
+2. Use `@class` and `@field` annotations for custom types
+3. Reference `vim.*` types for autocomplete and documentation
+
+```lua
+---@param opts table See :h nvim_create_autocmd for options
+function M.setup_autocmd(opts)
+    -- lua-language-server will show nvim_create_autocmd signature
+    vim.api.nvim_create_autocmd("BufWritePost", opts)
+end
+```
+
+---
+
+## Additional Development Tips
+
+### Debugging Plugin Issues
+
+1. **Use `vim.notify()` for logging:**
+   ```lua
+   vim.notify("Debug: " .. vim.inspect(value), vim.log.levels.DEBUG)
+   ```
+
+2. **Enable verbose mode for tracing:**
+   ```bash
+   nix run .#nvim-test -- -V15log.txt -u scripts/minimal-init.lua
+   ```
+
+3. **Test in isolation:**
+   Always use the minimal init when debugging to rule out conflicts with other plugins.
+
+### Testing Best Practices
+
+1. **Test against real scenarios:**
+   - Create representative test files in `test_root/`
+   - Test edge cases (empty files, binary files, large files)
+   - Verify behavior with different filetypes
+
+2. **Mock only when necessary:**
+   - Use real filesystem operations where possible
+   - Mock time-sensitive operations or external API calls
+   - Document why mocking is needed
+
+3. **Organize tests logically:**
+   - Group related tests in `describe()` blocks
+   - Use clear, descriptive test names
+   - One assertion per test when possible
+
+### Common Pitfalls
+
+1. **Global namespace pollution:**
+   - Always use `local M = {}` pattern
+   - Avoid creating global variables
+   - Use `vim.g.` for intentional globals only
+
+2. **Lazy loading issues:**
+   - Don't assume plugins are loaded at require time
+   - Use `pcall(require, "plugin")` for optional dependencies
+   - Check for API availability before calling
+
+3. **Autocmd cleanup:**
+   - Store autocmd IDs for cleanup in `M.cleanup()`
+   - Use `augroup` to prevent duplicate registrations
+   - Clear autocmds in `before_each` for tests
 
 ---
 
