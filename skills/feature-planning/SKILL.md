@@ -2,7 +2,7 @@
 name: feature-planning
 description: Interactive analysis and requirements gathering process for creating feature specification documents. Use when user asks to "plan a feature", "create a feature plan", "feature spec", or similar requests.
 allowed-tools: "Read,Grep,Glob,Bash,Write,todowrite"
-version: "1.0.0"
+version: "1.1.0"
 ---
 
 ## Introduction
@@ -123,9 +123,22 @@ Example clarifications might cover:
 
 Use `AskUserQuestion` to ask these clarifying questions and wait for response.
 
-### Step 1.3: Present Summary and Confirm (BLOCKING STEP)
+### Step 1.3: Analyze and Suggest Improvements
 
-Format the section summary clearly:
+Before presenting the summary for approval, review the gathered information and offer proactive guidance. Consider:
+
+- Is the purpose statement clear and specific, or vague?
+- Is the expected behavior concrete enough for an agent to implement without ambiguity?
+- Are there obvious edge cases or failure modes not mentioned?
+- Are primary users/stakeholders relevant to include, or is this a single-user tool where that's noise?
+- Does the feature scope seem too broad or too narrow for a single implementation unit?
+
+Present your analysis as a short bulleted list of **suggestions and potential improvements**, for example:
+- "The expected behavior doesn't mention what happens when X — consider specifying this"
+- "The purpose could be more concrete: instead of 'improves navigation', describe the specific action"
+- "This feature seems large — consider splitting into X and Y"
+
+Then present the section summary:
 
 ```markdown
 ## Section 1: Feature Name and Description ✓
@@ -143,8 +156,8 @@ Format the section summary clearly:
 [Description of expected behavior]
 ```
 
-Use the `question` tool to present this summary and ask:
-- "Does this accurately capture the feature?"
+Use the `question` tool to present both the suggestions and summary, and ask:
+- "Does this accurately capture the feature? Feel free to revise based on the suggestions above."
 - Options: "Looks good", provide corrections, or "Skip this section"
 
 **BLOCKING GATE:** Must wait for user confirmation before proceeding.
@@ -186,9 +199,20 @@ Example clarifications might cover:
 
 Use the `question` tool to ask these clarifying questions and wait for response.
 
-### Step 2.3: Present Summary and Confirm (BLOCKING STEP)
+### Step 2.3: Analyze and Suggest Improvements
 
-Format the section summary:
+Before presenting the summary for approval, review the requirements and offer proactive guidance. Consider:
+
+- Are any functional requirements ambiguous or untestable as written?
+- Are there missing error handling cases (what happens when input is invalid, missing, or unexpected)?
+- Are success conditions specific and verifiable, or subjective?
+- Do the user interaction flows cover the full happy path and key failure paths?
+- Are there implicit requirements that should be made explicit (e.g., atomicity, ordering, idempotency)?
+- Do any requirements conflict with each other or with what was described in Section 1?
+
+Present your analysis as a short bulleted list of **suggestions and potential improvements**.
+
+Then present the section summary:
 
 ```markdown
 ## Section 2: Feature Requirements ✓
@@ -211,7 +235,7 @@ Format the section summary:
 - [Condition 2]
 ```
 
-Use the `question` tool to present and ask for confirmation.
+Use the `question` tool to present both the suggestions and summary, and ask for confirmation.
 
 **BLOCKING GATE:** Must wait for approval, handle corrections, then proceed.
 
@@ -246,9 +270,19 @@ Example clarifications might cover:
 
 Use the `question` tool to ask these clarifying questions and wait for response.
 
-### Step 3.3: Present Summary and Confirm (BLOCKING STEP)
+### Step 3.3: Analyze and Suggest Improvements
 
-Format the section summary:
+Before presenting the summary for approval, review the constraints and offer proactive guidance. Consider:
+
+- Do any constraints conflict with or make the requirements in Section 2 impossible or harder than necessary?
+- Are there security constraints implied by the requirements that haven't been stated explicitly?
+- Are any constraints too vague to be actionable (e.g., "must be fast" vs. a specific benchmark)?
+- Are empty constraint categories worth keeping, or should they be omitted to reduce noise?
+- Are there constraints that are obvious from the project context (e.g., from AGENTS.md) that could be auto-populated rather than asked about?
+
+Present your analysis as a short bulleted list of **suggestions and potential improvements**.
+
+Then present the section summary:
 
 ```markdown
 ## Section 3: Constraints ✓
@@ -272,7 +306,7 @@ Format the section summary:
 - [Constraint]
 ```
 
-Use the `question` tool to present and ask for confirmation.
+Use the `question` tool to present both the suggestions and summary, and ask for confirmation.
 
 **BLOCKING GATE:** Must wait for approval, handle corrections, then proceed.
 
@@ -308,9 +342,20 @@ Example clarifications might cover:
 
 Use the `question` tool to ask these clarifying questions and wait for response.
 
-### Step 4.3: Present Summary and Confirm (BLOCKING STEP)
+### Step 4.3: Analyze and Suggest Improvements
 
-Format the section summary:
+Before presenting the summary for approval, review the verification plan and offer proactive guidance. Consider:
+
+- Do the edge cases listed actually cover the failure modes described in Section 2's requirements?
+- Are there security-relevant edge cases (e.g., path traversal, injection, boundary inputs) that are missing?
+- Is the success criteria description specific enough for an agent to self-evaluate, or is it vague?
+- Are any behaviors marked for unit testing that are actually untestable without mocking or manual interaction? Flag these explicitly.
+- Are there behaviors that can only be verified manually? Make sure they are listed under manual testing.
+- Does the test plan reference the correct test patterns from the project's AGENTS.md or established conventions?
+
+Present your analysis as a short bulleted list of **suggestions and potential improvements**.
+
+Then present the section summary:
 
 ```markdown
 ## Section 4: Feature Verification Testing ✓
@@ -339,7 +384,7 @@ Format the section summary:
 [Written description of how the agent will know the feature is correctly implemented]
 ```
 
-Use the `question` tool to present and ask for confirmation.
+Use the `question` tool to present both the suggestions and summary, and ask for confirmation.
 
 **BLOCKING GATE:** Must wait for approval, handle corrections, then proceed.
 
@@ -375,9 +420,20 @@ Example clarifications might cover:
 
 Use the `question` tool to ask these clarifying questions and wait for response.
 
-### Step 5.3: Present Summary and Confirm (BLOCKING STEP)
+### Step 5.3: Analyze and Suggest Improvements
 
-Format the section summary:
+Before presenting the summary for approval, review the deliverables and offer proactive guidance. Consider:
+
+- Do the public function signatures have enough detail for an agent to implement them (parameter names, types, return values)?
+- Are there functions implied by the requirements in Section 2 that are missing from the deliverables list?
+- Are any categories empty (e.g., "Deployment Artifacts: None") — if so, suggest omitting them for clarity?
+- Is the documentation list realistic and necessary, or boilerplate that won't actually be written?
+- Are there new files to create vs. existing files to modify? Both should be explicit.
+- Do the deliverables fully account for all the success conditions in Section 2?
+
+Present your analysis as a short bulleted list of **suggestions and potential improvements**.
+
+Then present the section summary:
 
 ```markdown
 ## Section 5: Deliverables and Artifacts ✓
@@ -406,7 +462,7 @@ Format the section summary:
 - [Release notes]
 ```
 
-Use the `question` tool to present and ask for confirmation.
+Use the `question` tool to present both the suggestions and summary, and ask for confirmation.
 
 **BLOCKING GATE:** Must wait for approval, handle corrections, then proceed.
 
