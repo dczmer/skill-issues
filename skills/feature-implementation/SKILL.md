@@ -430,6 +430,141 @@ status: "done"
 
 ---
 
+## Step 11: PR Review and Completion (BLOCKING STEP)
+
+After creating the pull request, pause for user review and handle any feedback.
+
+### Step 11.1: Present Completion Options (BLOCKING STEP)
+
+**STOP** and use the `question` tool:
+
+"The feature implementation is complete and a pull request has been created. What would you like to do next?"
+
+Options:
+- "Mark feature as complete (no PR review needed)"
+- "Check PR for comments and review feedback"
+- "Complete the process later (exit skill)"
+
+**If "Mark feature as complete":**
+1. Update the feature plan status to "done" (see Step 10.3)
+2. Exit the skill
+
+**If "Complete the process later":**
+1. Exit the skill without changing status
+2. The feature plan remains open for future continuation
+
+**If "Check PR for comments":**
+1. Proceed to Step 11.2
+
+### Step 11.2: Retrieve PR Comments
+
+Use `Bash` to view PR comments:
+
+```bash
+gh pr view <pr_number> --comments
+```
+
+If the PR number is not known, first retrieve it:
+
+```bash
+gh pr list --head <branch_name> --json number --jq '.[0].number'
+```
+
+### Step 11.3: Retrieve Inline Review Comments
+
+Use `gh api graphql` to query for review threads with inline comments:
+
+```bash
+gh api graphql -f query='
+query {
+  repository(owner: "<owner>", name: "<repo>") {
+    pullRequest(number: <pr_number>) {
+      reviewThreads(first: 100) {
+        nodes {
+          id
+          isResolved
+          comments(first: 100) {
+            nodes {
+              author { login }
+              body
+              path
+              line
+              originalLine
+            }
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+Extract owner and repo from the remote URL:
+
+```bash
+git remote get-url origin | sed 's/.*github.com[:/]\([^/]*\)/\([^/]*\).*/\1 \2/'
+```
+
+### Step 11.4: Present Review Feedback (BLOCKING STEP)
+
+Compile and present all comments:
+
+```markdown
+## PR Review Feedback
+
+### General Comments:
+[List general PR comments]
+
+### Inline Review Comments:
+[For each review thread]
+- **File:** `path/to/file`
+- **Line:** X
+- **Author:** @username
+- **Comment:** [comment body]
+- **Status:** [Resolved / Unresolved]
+```
+
+Use the `question` tool:
+
+"Here is the review feedback for this PR. How would you like to proceed?"
+
+Options:
+- "Address all comments"
+- "Address specific comments (select below)"
+- "Mark feature as complete (ignore remaining comments)"
+- "Check again later (exit skill)"
+
+**If "Address all comments" or "Address specific comments":**
+1. For each comment to address:
+   - Navigate to the file and line mentioned
+   - Read the relevant code context
+   - Make the requested changes
+   - Test the changes
+   - Commit with message referencing the review
+2. After addressing comments, push changes:
+   ```bash
+   git push origin <branch_name>
+   ```
+3. Return to Step 11.2 to check for new comments or updates
+
+**If "Mark feature as complete":**
+1. Update the feature plan status to "done"
+2. Exit the skill
+
+**If "Check again later":**
+1. Exit the skill
+2. The feature plan remains open
+
+### Step 11.5: Repeat Until Complete
+
+Repeat Steps 11.2-11.4 until:
+- The user chooses to mark the feature as complete, OR
+- The user chooses to exit and continue later
+
+Do NOT proceed without explicit user confirmation at each blocking step.
+
+---
+
 ## Tips for Best Results
 
 - Review the specification document thoroughly before starting
