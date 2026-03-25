@@ -1,15 +1,15 @@
 ---
 name: feature-planning
 description: Interactive analysis and requirements gathering process for creating feature specification documents. Use when user asks to "plan a feature", "create a feature plan", "feature spec", or similar requests.
-allowed-tools: "Read,Grep,Glob,Bash,Write,todowrite"
-version: "1.1.0"
+allowed-tools: "Read,Grep,Glob,Bash,Write,todowrite,question"
+version: "2.0.0"
 ---
 
 ## Introduction
 
-This skill conducts an interactive interview process to gather feature requirements and create a structured specification document. After planning is complete, use the `feature-implementation` skill to implement the feature.
+This skill conducts an interactive interview process to gather feature requirements and create a structured specification document stored as a GitHub issue. After planning is complete, use the `feature-implementation` skill to implement the feature.
 
-The skill generates a structured `FEATURE_NAME.md` document in `./feature-plans/` covering:
+The skill creates or updates a GitHub issue with a structured feature specification covering:
 1. **Feature Name and Description** - What the feature is and its purpose
 2. **Feature Requirements** - Detailed functional requirements
 3. **Constraints** - Technical, business, and operational constraints
@@ -18,7 +18,7 @@ The skill generates a structured `FEATURE_NAME.md` document in `./feature-plans/
 
 ### Process Flow
 
-The skill follows a structured, iterative approach with blocking gates between sections for user approval.
+The skill follows a structured, iterative approach with blocking gates between sections for user approval. It integrates with GitHub issues to track feature planning.
 
 ### Usage
 
@@ -39,9 +39,11 @@ Throughout the process, maintain an internal state object to track progress.
 
 ```yaml
 feature_state:
-  mode: "new" | "continue"
+  mode: "new" | "continue" | "existing_issue"
+  github_issue_number: null | "<ISSUE_NUMBER>"
   feature_name: null | "<FEATURE_NAME>"
   feature_name_sanitized: null | "<FEATURE_NAME with spaces as '-' and invalid chars removed>"
+  issue_context: null | "<Issue description from GitHub>"
   sections:
     description:
       status: "pending" | "in_progress" | "approved" | "skipped"
@@ -78,16 +80,47 @@ feature_state:
 
 ---
 
-## Step 0: Check for Continuation
+## Step 0: Check for GitHub Issues and Continuation
 
-### Step 0.1: Check for Existing Feature Document
+### Step 0.1: Check for Open GitHub Issues
+
+**BLOCKING STEP:** Ask user permission before checking GitHub issues.
+
+Use the `question` tool to ask:
+"Would you like me to check for open GitHub issues that might relate to this feature planning session?"
+Options: "Yes, check for open issues", "No, start fresh"
+
+**If user approves:**
+1. Use `Bash` to list open issues:
+   ```bash
+   gh issue list --state open --limit 20 --json number,title,body,state
+   ```
+2. Parse the results and present to the user
+3. Use `question` to ask: "Would you like to use one of these existing issues as the basis for this feature plan, or create a new one?"
+   Options: [List issue titles as options], "Create new issue", "Start without issue"
+
+**If existing issue selected:**
+1. Store the `github_issue_number` in state
+2. Store the issue body in `issue_context`
+3. Parse the issue title as the feature name
+4. Set `mode` to "existing_issue"
+5. Present: "I'll use issue #N as the basis for this feature plan. I'll incorporate the existing issue description as context."
+
+**If no issues found or user declines:**
+- Set `mode` to "new"
+- Proceed to Section 1
+
+### Step 0.2: Check for Existing Feature Document (Deprecated)
+
+**Note:** File-based feature plans in `./feature-plans/` are deprecated. This step exists only for backward compatibility.
 
 Use `Glob` to check if a `feature-plans/FEATURE_NAME.md` file already exists (where FEATURE_NAME is a sanitized feature name from a previous run).
 
 **If feature document exists:**
 1. Use `Read` to load the full contents
-2. Present: "I found an existing feature document. Would you like to continue from where we left off or start fresh?"
-3. Options: "Continue editing", "Start fresh", "Cancel"
+2. Present: "I found an existing feature document. This file-based storage is deprecated. Would you like to migrate this to a GitHub issue and continue, or start fresh?"
+3. Options: "Migrate to GitHub issue", "Start fresh", "Cancel"
+4. If "Migrate to GitHub issue": Extract content and proceed to Step 6.3 to create/update the issue
 
 **If no existing document:**
 - Check for invocation modifiers or supplemental context
@@ -99,13 +132,20 @@ Use `Glob` to check if a `feature-plans/FEATURE_NAME.md` file already exists (wh
 
 ### Step 1.1: Initial Information Gathering
 
-Use `AskUserQuestion` to gather the following information:
+**If existing issue context is available:**
+Review the issue description stored in `issue_context` and use it to pre-populate suggestions for the interview questions.
+
+Use `question` tool to gather the following information:
 
 **Questions:**
 1. What is the name of the feature you want to add?
 2. What problem does this feature solve or what value does it provide?
 3. Who are the primary users or stakeholders who will use this feature?
 4. What is the expected behavior of this feature?
+
+**If issue context exists, include context-aware prompts:**
+- "Based on the issue description, this feature seems to be about [X]. Does that sound right?"
+- "The issue mentions [Y] — is this the primary focus, or are there other aspects to consider?"
 
 Wait for the user's response.
 
@@ -468,75 +508,61 @@ Use the `question` tool to present both the suggestions and summary, and ask for
 
 ---
 
-## Step 6: Final Assembly and Save
+## Step 6: Final Assembly and GitHub Issue Update
 
 ### Step 6.1: Compile Full Feature Document
 
 Once all sections are complete:
 1. Assemble all approved section content
-2. Add YAML frontmatter with `name` and `status` fields
-3. Add metadata (date, version)
-4. Generate table of contents
-5. Format consistently with proper markdown
+2. Add metadata (date, version)
+3. Generate table of contents
+4. Format consistently with proper markdown
 
-### Step 6.1.1: YAML Frontmatter Format
+**Note:** Frontmatter is no longer included. The feature name is derived from the GitHub issue title by:
+- Converting to lowercase
+- Replacing spaces with `-`
+- Removing any characters that do not match `[A-Za-z0-9-_]`
 
-The document must start with YAML frontmatter:
+### Step 6.2: Create or Update GitHub Issue
 
-```yaml
----
-name: "<FEATURE_NAME>"
-status: "open"
----
-```
+**If `github_issue_number` is set (existing issue):**
+1. Use `Bash` to update the issue body:
+   ```bash
+   gh issue edit <ISSUE_NUMBER> --body "$(cat <<'EOF'
+   <Compiled markdown content here>
+   EOF
+   )"
+   ```
 
-- `name`: The sanitized feature name (same as filename without `.md`)
-- `status`: Always initialized as `"open"` when created by this skill
-
-Valid status values:
-- `"open"` - Feature plan is active and ready for implementation
-- `"closed"` - Feature plan is cancelled or deprecated
-- `"done"` - Feature has been implemented
-
-### Step 6.2: Ensure Directory Exists
-
-Use `Bash` to create the feature-plans directory if it doesn't exist:
-
-```bash
-mkdir -p ./feature-plans
-```
-
-### Step 6.3: Write to File
-
-Use the sanitized `FEATURE_NAME` as the filename with `.md` extension.
-
-The document structure must be:```markdown
----
-name: "<FEATURE_NAME>"
-status: "open"
----
-
-[Table of Contents]
-
-[Section 1: Feature Name and Description]
-
-[Section 2: Feature Requirements]
-
-[Section 3: Constraints]
-
-[Section 4: Feature Verification Testing]
-
-[Section 5: Deliverables and Artifacts]
-```
-
-Use `Write` tool to save the document to `./feature-plans/FEATURE_NAME.md`.
+**If no issue exists:**
+1. Use `Bash` to create a new issue:
+   ```bash
+   gh issue create --title "<Feature Name>" --body "$(cat <<'EOF'
+   <Compiled markdown content here>
+   EOF
+   )" --label "feature-plan"
+   ```
+2. Capture the issue number from the output
+3. Store it in `github_issue_number`
 
 **Success message:**
 ```
-Feature specification saved to: ./feature-plans/FEATURE_NAME.md
+Feature specification updated in GitHub issue #<NUMBER>: <Feature Name>
 
+GitHub issue status: open
 To implement this feature, invoke: /feature-implementation
 ```
+
+### Step 6.3: Deprecated File-Based Storage
+
+**Note:** File-based feature plans in `./feature-plans/` are deprecated. This section is retained for backward compatibility only. New feature plans should use GitHub issues exclusively.
+
+If migrating from an existing file-based plan:
+- The content is transferred to the GitHub issue
+- The original file is left in place but is no longer the source of truth
+- Future edits should be made through the GitHub issue
+
+
 
 ---
 

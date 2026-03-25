@@ -20,6 +20,7 @@
             packages = with pkgs; [
               uv
               mdl
+              gh
             ];
             shellHook = ''
               [[ -d .venv ]] || uv venv .venv
