@@ -1,18 +1,21 @@
 ---
 name: feature-implementation
-description: Implements a feature from a saved specification document using TDD approach. Use when user asks to "implement a feature", "start implementation", or after completing feature-planning.
+description: Implements a feature from a GitHub issue specification using TDD approach. Use when user asks to "implement a feature", "start implementation", or after completing feature-planning.
 allowed-tools: "Read,Grep,Glob,Bash,Write,Edit,todowrite,skill"
-version: "1.0.0"
+version: "2.0.0"
 ---
 
 ## Introduction
 
-This skill implements a feature from a previously created specification document (`./feature-plans/FEATURE_NAME.md`) using a test-driven development (TDD) approach. Use `feature-planning` first to create the specification document.
+This skill implements a feature from a previously created GitHub issue specification using a test-driven development (TDD) approach. Use `feature-planning` first to create the specification in a GitHub issue.
+
+The skill reads feature specifications from GitHub issues labeled `feature-plan` and implements them following the structured workflow defined in the issue body.
 
 ### Prerequisites
 
-- A feature specification document must exist in `./feature-plans/`
-- The specification should have all required sections approved
+- A GitHub issue with the `feature-plan` label must exist
+- The issue body should contain the structured feature specification
+- The `gh` CLI must be installed and authenticated
 
 ### Process Flow
 
@@ -39,8 +42,10 @@ Throughout the implementation, maintain an internal state object.
 
 ```yaml
 implementation_state:
-  plan_file: null | "./feature-plans/FEATURE_NAME.md"
+  github_issue_number: null | "<ISSUE_NUMBER>"
   feature_name: null | "<FEATURE_NAME>"
+  feature_name_sanitized: null | "<FEATURE_NAME with spaces as '-' and invalid chars removed>"
+  issue_body: null | "<Full issue body content>"
   branch_name: null | "feature/FEATURE_NAME"
   branch_created: false
   current_module: null
@@ -56,51 +61,55 @@ implementation_state:
 
 1. **Initialize** the state object at the very start
 2. **Update `current_step`** each time you transition to a new step
-3. **Set `plan_file`** after Step 0
-4. **Set `branch_name`** after Step 6
-5. **Set `deliverables_verified`** to `true` after Step 9.2
+3. **Set `github_issue_number`** and `issue_body` after Step 0
+4. **Set `feature_name_sanitized`** after parsing the issue (lowercase, spaces to `-`, remove invalid chars)
+5. **Set `branch_name`** after Step 6
+6. **Set `deliverables_verified`** to `true` after Step 9.2
 
 ---
 
-## Step 0: Select Feature Specification
+## Step 0: Select GitHub Issue
 
-### Step 0.1: Check for Feature Plans
+### Step 0.1: Check for GitHub Issues
 
-Use `Glob` to find all feature planning documents:
+Use `Bash` to list open issues with the `feature-plan` label:
 
+```bash
+gh issue list --label feature-plan --state open --limit 20 --json number,title,body
 ```
-./feature-plans/*.md
-```
 
-Exclude `README.md` from results.
-
-For each plan found, use `Read` to load the file and parse the YAML frontmatter. Only include plans where the `status` field is `"open"`. Plans with `status: "closed"` or `status: "done"` should be filtered out.
+Parse the JSON results to extract issue number, title, and body.
 
 ### Step 0.2: Handle Results
 
-**If no open plans found:**
-1. Inform user: "No feature specification documents with status 'open' found in ./feature-plans/"
+**If no open issues found:**
+1. Inform user: "No open GitHub issues with the 'feature-plan' label found."
 2. Suggest: "Run `/feature-planning` first to create a specification"
 3. Exit the skill
 
-**If one plan found:**
-1. Use `Read` to load the plan
-2. Display feature name and ask: "Implement this feature?"
-3. Options: "Yes", "No, select different plan", "Cancel"
-4. If "Yes", set `plan_file` and proceed to Step 6
+**If one issue found:**
+1. Display issue title and ask: "Implement this feature?"
+2. Options: "Yes", "No, select different issue", "Cancel"
+3. If "Yes", set `github_issue_number` and `issue_body` and proceed to Step 0.3
 
-**If multiple plans found:**
-1. Present list of available plans (showing feature names)
+**If multiple issues found:**
+1. Present list of available issues (showing issue numbers and titles)
 2. Use `question` tool to prompt: "Which feature would you like to implement?"
-3. Options: List of feature names, "Cancel"
-4. After selection, set `plan_file` and proceed to Step 6
+3. Options: List of issue titles with numbers, "Cancel"
+4. After selection, set `github_issue_number` and `issue_body` and proceed to Step 0.3
 
 ### Step 0.3: Parse Specification
 
-After selecting a plan:
-1. Read the full specification document
-2. Extract all sections for reference during implementation
-3. Update state with `feature_name` from the document
+After selecting an issue:
+1. Store the full issue body in `issue_body`
+2. Extract the feature name from the issue title
+3. Derive `feature_name_sanitized` by converting to lowercase, replacing spaces with `-`, and removing characters not matching `[A-Za-z0-9-_]`
+4. Parse the issue body to extract all sections (Description, Requirements, Constraints, Verification, Deliverables) by looking for `## Section X:` headers
+5. Update state with all extracted information
+
+### Step 0.4: Legacy File-Based Plans (Deprecated)
+
+**Note:** File-based feature plans in `./feature-plans/` are no longer supported. Only GitHub issues with the `feature-plan` label are used for feature specifications.
 
 ---
 
@@ -287,7 +296,7 @@ Run all tests, linters, and type checker one final time.
 
 ### Step 9.2: Verify Deliverables and Artifacts
 
-**Read the feature plan's Section 5 (Deliverables and Artifacts)** and verify each item was produced:
+**Parse Section 5 (Deliverables and Artifacts) from the issue body** and verify each item was produced:
 
 **Checklist:**
 
@@ -389,22 +398,26 @@ Use the `question` tool:
 **If No:**
 - Present commit summary and branch name for manual PR creation
 
-### Step 10.3: Update Feature Plan Status
+### Step 10.3: Update GitHub Issue Status
 
-After successful completion, update the feature plan document's status to `"done"`:
+After successful completion, update the GitHub issue to reflect implementation status:
 
-1. Use `Read` to load the feature plan file
-2. Use `Edit` to change the YAML frontmatter from `status: "open"` to `status: "done"`
-3. Use `Write` to save the updated file
+1. Use `Bash` to close the issue:
+   ```bash
+   gh issue close <github_issue_number>
+   ```
 
-The feature plan document should now have:
+2. Optionally add a comment noting completion:
+   ```bash
+   gh issue comment <github_issue_number> --body "Feature implementation complete. All deliverables verified and tests passing."
+   ```
 
-```yaml
----
-name: "<FEATURE_NAME>"
-status: "done"
----
-```
+3. Update state to reflect completion
+
+**If the implementation was aborted or cancelled:**
+- Do not close the issue
+- Optionally add a comment: `gh issue comment <github_issue_number> --body "Implementation started but not completed. Issue remains open for future work."`
+- Remove any `in-progress` label if present
 
 ---
 
@@ -420,13 +433,23 @@ status: "done"
 - Options: "Yes, close it", "No, keep it open"
 
 **If user confirms closing:**
-1. Update the feature plan's YAML frontmatter from `status: "open"` to `status: "closed"`
-2. Use `Write` to save the updated file
+1. Use `Bash` to close the GitHub issue:
+   ```bash
+   gh issue close <github_issue_number>
+   ```
+2. Optionally add a comment explaining why it was closed:
+   ```bash
+   gh issue comment <github_issue_number> --body "Implementation cancelled/abandoned."
+   ```
 3. Exit the skill
 
 **If user wants to keep it open:**
-- Exit the skill without changing status
-- The feature plan remains available for future implementation attempts
+- Optionally add a comment noting the partial implementation:
+  ```bash
+  gh issue comment <github_issue_number> --body "Partial implementation completed. Work stopped at [describe current state]."
+  ```
+- Exit the skill without closing the issue
+- The GitHub issue remains available for future implementation attempts
 
 ---
 
@@ -567,7 +590,7 @@ Do NOT proceed without explicit user confirmation at each blocking step.
 
 ## Tips for Best Results
 
-- Review the specification document thoroughly before starting
+- Review the GitHub issue specification thoroughly before starting
 - Follow existing code patterns in the project
 - Run tests frequently during implementation
 - Don't skip manual testing if uncertain
