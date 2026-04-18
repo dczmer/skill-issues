@@ -1,30 +1,31 @@
 ---
 name: feature-implementation
-description: Implements a feature from a GitHub issue specification using TDD approach. Use when user asks to "implement a feature", "start implementation", or after completing feature-planning.
-allowed-tools: "Read,Grep,Glob,Bash,Write,Edit,todowrite,skill"
-version: "2.0.0"
+description: Implements a feature from a GitHub issue specification using TDD approach with subagent delegation. Use when user asks to "implement a feature", "start implementation", or after completing feature-planning.
+allowed-tools: "Read,Grep,Glob,Bash,Write,Edit,todowrite,skill,task,question"
 ---
 
 ## Introduction
 
-This skill implements a feature from a previously created GitHub issue specification using a test-driven development (TDD) approach. Use `feature-planning` first to create the specification in a GitHub issue.
+This skill implements a feature from a previously created GitHub issue specification using a test-driven development (TDD) approach with specialized subagent delegation for parallel processing and modularity.
 
-The skill reads feature specifications from GitHub issues labeled `feature-plan` and implements them following the structured workflow defined in the issue body.
+The skill reads feature specifications from GitHub issues labeled `feature-plan` and implements them following the structured workflow defined in the issue body, delegating specific tasks to specialized subagents defined in `/agents/`.
 
 ### Prerequisites
 
 - A GitHub issue with the `feature-plan` label must exist
 - The issue body should contain the structured feature specification
 - The `gh` CLI must be installed and authenticated
+- Git must be configured for checkpoint creation
 
 ### Process Flow
 
 1. **Step 0:** Select feature specification to implement
 2. **Step 6:** Create feature branch (with user approval)
-3. **Step 7:** Implementation planning
-4. **Step 8:** TDD implementation loop
-5. **Step 9:** Final verification
+3. **Step 7:** Implementation planning (via `requirements-analyzer` subagent)
+4. **Step 8:** TDD implementation loop (via `test-writer`, `stub-creator`, `implement-function`, `code-fixer` subagents)
+5. **Step 9:** Final verification (via parallel `deliverables-verifier` subagents)
 6. **Step 10:** Git operations and PR creation
+7. **Step 11:** PR review handling (via parallel `review-responder` subagents)
 
 ### Usage
 
@@ -69,12 +70,33 @@ Parse the JSON results to extract issue number, title, and body.
 After selecting an issue:
 1. Keep track of the issue number and body for later use
 2. Extract the feature name from the issue title
-3. Derive a sanitized feature name by converting to lowercase, replacing spaces with `-`, and removing characters not matching `[A-Za-z0-9-_]`
-4. Parse the issue body to extract all sections (Description, Requirements, Constraints, Verification, Deliverables) by looking for `## Section X:` headers
+3. Derive a sanitized feature name: lowercase, replace spaces with `-`, remove special chars except `[A-Za-z0-9-_]`
+4. Parse the issue body to extract all sections (Description, Requirements, Constraints, Verification, Deliverables)
 
-### Step 0.4: Legacy File-Based Plans (Deprecated)
+### Step 0.4: Prepare Subagent Context
 
-**Note:** File-based feature plans in `./feature-plans/` are no longer supported. Only GitHub issues with the `feature-plan` label are used for feature specifications.
+Create a context document to pass to subagents:
+
+```json
+{
+  "feature": {
+    "name": "Feature Name",
+    "sanitized_name": "feature-name",
+    "issue_number": 123,
+    "issue_body": "full issue body content"
+  },
+  "repository": {
+    "root_path": "/absolute/path/to/repo",
+    "reference_files": ["AGENTS.md", "README.md", "pyproject.toml"]
+  },
+  "session": {
+    "timestamp": "ISO8601 timestamp",
+    "checkpoint_prefix": "checkpoint"
+  }
+}
+```
+
+Store this context for use throughout the skill.
 
 ---
 
@@ -82,478 +104,508 @@ After selecting an issue:
 
 ### Step 6.1: Propose Branch Creation
 
-Use the `question` tool to ask:
+Use `question` tool:
 
-"Ready to create a feature branch. The default name will be `feature/FEATURE_NAME`. Would you like to proceed, or would you like to specify a different branch name?"
+"Ready to create a feature branch. Default name: `feature/FEATURE_NAME`. Proceed?"
 
-Options:
-- "Create branch with default name"
-- "Specify custom branch name"
-- "Skip branch creation"
+Options: "Create with default name", "Specify custom name", "Skip branch creation"
 
-**If "Specify custom branch name":**
-1. Ask: "What branch name would you like to use?"
-2. Validate the branch name (no spaces, valid characters)
-3. Use this branch name for subsequent git operations
+**If custom name:**
+1. Ask for branch name
+2. Validate (no spaces, valid chars)
 
-**If "Skip branch creation":**
-1. Note: "Branch creation skipped. Proceeding with current branch."
-2. Note that branch creation was skipped
-3. Proceed to Step 7
+**If skip:** Note and proceed to Step 7
 
 ### Step 6.2: Create Branch
-
-Use `Bash` to create the feature branch:
 
 ```bash
 git checkout -b <branch_name>
 ```
 
-Note that the branch was created successfully
-
 ---
 
 ## Step 7: Implementation Planning
 
-### Step 7.1: Analyze Requirements
+### Step 7.1: Launch Requirements Analyzer
 
-Review the approved feature requirements and identify:
-1. All modules that need to be created or modified
-2. All functions within each module
-3. Dependencies between modules
-4. Test files needed
+Use `task` to launch the requirements-analyzer subagent:
+
+```
+task(
+  subagent_type="general",
+  prompt="Load and follow instructions from /agents/requirements-analyzer.md, then analyze:\n\nFeature: [feature_name]\nSanitized: [sanitized_name]\nIssue Body:\n[issue_body]\n\nReturn the structured JSON output as specified in the agent definition."
+)
+```
+
+**Wait for completion and parse the JSON response.**
 
 ### Step 7.2: Present Implementation Plan (BLOCKING STEP)
 
-Present a structured implementation plan:
+Parse and present:
 
 ```markdown
-## Implementation Plan for FEATURE_NAME
+## Implementation Plan for [FEATURE_NAME]
 
-### Module 1: [module_name]
-- Function 1.1: [function_name] - [purpose]
-- Function 1.2: [function_name] - [purpose]
-
-### Module 2: [module_name]
-- Function 2.1: [function_name] - [purpose]
-- ...
+### Modules:
+- [module_name]: [function signatures]
 
 ### Implementation Order:
-1. [Module/Function]
-2. [Module/Function]
-...
+1. [module.function]
+
+### Patterns:
+- Test Framework: [framework]
+- Style: [notes]
 ```
 
-Use the `question` tool to ask:
-- "Does this implementation plan look correct?"
-- Options: "Looks good, proceed", "Modify plan"
+Use `question`:
+- "Does this plan look correct?"
+- Options: "Looks good, proceed", "Modify plan", "Re-analyze", "Cancel"
 
-**If user wants modifications:**
-1. Present revised plan
-2. Wait for approval**If approved:**
-- Proceed with this implementation plan
-- Proceed to Step 8
+**If modify:** Collect feedback, relaunch subagent, return to Step 7.1
+
+**If approved:** Store plan, proceed to Step 8
 
 ---
 
 ## Step 8: TDD Implementation Loop
 
-For each module and function in the implementation plan:
+For each function in implementation order:
 
-### Step 8.1: Create Unit Tests
+### Step 8.1: Create Checkpoint
 
-Create the test file and write unit tests for the function. Tests should:
-- Cover the expected behavior from requirements
-- Include edge cases
-- Include error conditions
-- Follow existing test patterns in the project
+```bash
+git add -A
+git commit -m "checkpoint: before [module].[function]" --allow-empty
+git tag checkpoint/before-[module]-[function]-$(date +%s)
+```
 
-### Step 8.2: Create Stubs
+### Step 8.2: Launch Test Writer
 
-Create the function/module stubs required for the tests to execute:
-- Implement minimal stubs that will fail the tests
-- This validates that tests are properly written
+Use `task` to launch test-writer subagent:
 
-Run the tests to confirm they fail as expected.
+```
+task(
+  subagent_type="general",
+  prompt="Load and follow instructions from /agents/test-writer.md, then create tests for:\n\nFunction: [function_name]\nSignature: [signature]\nPurpose: [purpose]\nModule: [module]\nRequirements: [relevant_requirements]\nPatterns: [patterns_observed]\n\nReturn the structured JSON output."
+)
+```
 
-### Step 8.3: Present Tests for Review (BLOCKING STEP)
+**Wait for completion and parse JSON.**
 
-**BLOCKING STEP:** Tests MUST be approved before proceeding to implementation. Do NOT proceed with Step 8.4 until the user explicitly approves the tests.
+### Step 8.3: Write Tests
 
-Use the `question` tool:
-- "Here are the tests for [function_name]. Please review and let me know if they look correct or if any modifications are needed."
-- Show the test code
-- Options: "Looks good, proceed", "Modify tests"
+Write test code to the specified file path.
 
-**BLOCKING GATE:** Wait for user confirmation before proceeding.
+### Step 8.4: Launch Stub Creator
 
-**If user requests modifications:**
-1. Update the tests
-2. Show revised tests
-3. Wait for approval
-4. **Repeat until tests are approved**
+Use `task` to launch stub-creator subagent:
 
-**If approved:**
-- Proceed to Step 8.4
+```
+task(
+  subagent_type="general",
+  prompt="Load and follow instructions from /agents/stub-creator.md, then create stubs for:\n\nFunction: [function_name]\nSignature: [signature]\nModule Path: [module_path]\nTest Content: [test_content]\n\nReturn the structured JSON output."
+)
+```
 
-### Step 8.4: Implement Function
+**Wait for completion.**
 
-Implement the function to make the tests pass:
-1. Write the actual implementation
-2. Run the tests for this function
-3. If tests fail, debug and modify until tests pass
+### Step 8.5: Write Stubs and Verify Tests Fail
 
-### Step 8.5: Run Full Test Suite and Linters (BLOCKING STEP on failures)
+1. Write stub code
+2. Run tests to confirm they fail:
 
-Run all linters, type checker, and unit tests:
+```bash
+uv run pytest [test_file] -v 2>&1
+```
 
-1. **If type checker or linters fail:**
-   - Fix the issues
-   - Re-run until clean
+**Expected:** Tests fail with assertion errors or NotImplementedError
 
-2. **If other unit tests fail (not the one just implemented):**
-   - **STOP and inform the user**
-   - Present the failing tests
-   - Ask: "These tests are failing. How would you like to proceed?"
-   - Options: "Fix them", "Skip for now", "Cancel feature implementation"
+**If tests pass unexpectedly:** Inform user and ask how to proceed
 
-3. **If all checks pass:**
-   - Proceed to Step 8.6
+### Step 8.6: Present Tests for Review (BLOCKING STEP)
 
-### Step 8.6: Documentation Check Prompt
+Present test coverage, code, and confidence level.
 
-Use the `question` tool:
-- "Implementation of [function_name] is complete. Should we look for documentation that needs updating?"
+Use `question`:
+- "Review these tests. Proceed to implementation?"
+- Options: "Looks good", "Modify tests", "Skip function"
+
+**If modify:** Rollback, relaunch test-writer with feedback, return to Step 8.2
+
+**If approved:** Proceed to Step 8.7
+
+### Step 8.7: Launch Implementation Subagent
+
+Use `task` to launch implement-function subagent:
+
+```
+task(
+  subagent_type="general",
+  prompt="Load and follow instructions from /agents/implement-function.md, then implement:\n\nFunction: [function_name]\nSignature: [signature]\nPurpose: [purpose]\nTest Content: [test_content]\nStub Code: [stub_code]\nReferences: [similar_functions]\nPatterns: [patterns_observed]\n\nReturn the structured JSON output."
+)
+```
+
+**Wait for completion.**
+
+### Step 8.8: Write Implementation and Validate
+
+1. Write implementation code
+2. Run tests:
+
+```bash
+uv run pytest [test_file] -v 2>&1
+```
+
+**If pass:** Proceed to Step 8.9
+
+**If fail:**
+- Simple fixes: Apply directly
+- Complex: Rollback, relaunch with failure context, return to Step 8.7
+
+### Step 8.9: Parallel Quality Checks
+
+Launch code-fixer subagent in parallel with main test suite:
+
+**Subagent (via task):**
+```
+task(
+  subagent_type="general",
+  prompt="Load and follow instructions from /agents/code-fixer.md, then fix:\n\nFiles: [modified_files]\nLinter: [ruff/etc]\nType Checker: [mypy/etc]\n\nReturn the structured JSON output."
+)
+```
+
+**Main agent (parallel):**
+```bash
+uv run pytest -x -v 2>&1 | head -100
+```
+
+### Step 8.10: Handle Quality Issues (BLOCKING STEP)
+
+Compile results from code-fixer and test suite.
+
+**If all pass:** Proceed to Step 8.11
+
+**If issues:** Use `question`:
+- "Quality issues found. How to proceed?"
+- Options: "Auto-fix", "Show issues", "Skip", "Rollback"
+
+### Step 8.11: Documentation Check
+
+Use `question`:
+- "Check for documentation updates?"
 - Options: "Yes", "No"
 
-**If Yes:**
-1. Search for relevant documentation files
-2. Present findings
-3. Ask which documents to update
+**If yes:** Search docs, present findings, ask which to update
 
-### Step 8.7: Run Documentation Consistency Check
+### Step 8.12: Documentation Consistency
 
-Invoke the `documentation-consistency` skill to verify documentation remains consistent.
+Invoke skill:
+```
+/skill documentation-consistency
+```
 
-### Step 8.8: Manual Acceptance Testing Prompt
+### Step 8.13: Completion Checkpoint
 
-Use the `question` tool:
-- "Module [module_name] implementation is complete. Would you like to do manual acceptance testing before continuing?"
-- Options: "Yes", "No"
+```bash
+git add -A
+git commit -m "feat([module]): implement [function] with tests"
+git tag checkpoint/after-[module]-[function]-$(date +%s)
+```
 
-**If Yes:**
-- Provide instructions for manual testing
-- Wait for user confirmation
+### Step 8.14-8.15: Continue or Complete Module
 
-### Step 8.9: Repeat
-
-Repeat Steps 8.1-8.8 for each remaining function/module.
+- If more functions: Return to Step 8.1
+- If module complete: Ask about manual testing, then continue to next module or proceed to Step 9
 
 ---
 
 ## Step 9: Final Verification
 
-After all modules are implemented:
+### Step 9.1: Parse Deliverables
 
-### Step 9.1: Run Full Test Suite
+Extract deliverables from issue body Section 5.
 
-Run all tests, linters, and type checker one final time.
+### Step 9.2: Launch Parallel Deliverables Verifiers
 
-### Step 9.2: Verify Deliverables and Artifacts
+Launch 5 subagents in parallel (one per category):
 
-**Parse Section 5 (Deliverables and Artifacts) from the issue body** and verify each item was produced:
-
-**Checklist:**
-
-**Public Functions/APIs:**
-- [ ] Verify each function/API listed in Section 5 exists and is accessible
-- [ ] Confirm function signatures match specification
-
-**User-Facing Features:**
-- [ ] Verify each UI component/feature is implemented
-- [ ] Test user interactions work as specified
-
-**Documentation:**
-- [ ] Check README updates are present
-- [ ] Verify API documentation is complete
-- [ ] Confirm user guides are written
-
-**Configuration/Infrastructure:**
-- [ ] Verify config files are in place
-- [ ] Check migration scripts run successfully
-- [ ] Confirm environment variables are documented
-
-**Deployment Artifacts:**
-- [ ] Verify package files are created
-- [ ] Check Docker images build correctly
-- [ ] Confirm release notes are prepared
-
-Use the `question` tool to present this checklist:
-- "Based on the deliverables in the feature plan, here's what was implemented. Please verify each item:"
-- Show the checklist with status of each item
-- Options: "All deliverables verified", "Missing items - explain below"
-
-**If missing items:**
-1. Ask which items need to be addressed
-2. Go back to implement the missing deliverables
-3. Re-run verification
-
-**If all verified:**
-- Proceed to Step 9.3
-
-### Step 9.3: Present Completion Summary
-
-```markdown
-## Implementation Complete: FEATURE_NAME
-
-### Modules Implemented:
-- [Module 1]
-- [Module 2]
-
-### Tests Added:
-- [Test file 1]
-- [Test file 2]
-
-### Documentation Updated:
-- [Doc file 1]
-- [Doc file 2]
-
-### Deliverables Verified:
-- [Deliverable 1] ✓
-- [Deliverable 2] ✓
-- [Deliverable 3] ✓
-
-### Status:
-All tests passing
-All linters clean
-Type checker passing
-All deliverables verified
 ```
+# For each category: Public Functions, User-Facing Features, Documentation, Configuration, Deployment
+task(
+  subagent_type="general",
+  prompt="Load and follow instructions from /agents/deliverables-verifier.md, then verify:\n\nCategory: [category_name]\nDeliverables: [list]\nImplementation: [current_state]\n\nReturn the structured JSON output."
+)
+```
+
+**Wait for all to complete.**
+
+### Step 9.3: Aggregate Results
+
+Compile into unified checklist.
+
+### Step 9.4: Present Verification (BLOCKING STEP)
+
+Use `question`:
+- "Verification complete. Proceed?"
+- Options: "All verified", "Fix missing items", "Re-verify category", "Cancel"
+
+**If missing:** Address items, re-run verification
+
+**If approved:** Proceed to Step 9.5
+
+### Step 9.5: Final Test Suite
+
+```bash
+uv run pytest -v --tb=short 2>&1 | tail -50
+uv run ruff check . 2>&1
+uv run mypy . 2>&1 || echo "Type check completed"
+```
+
+**If issues:** Present and ask how to proceed
+
+**If all pass:** Proceed to Step 9.6
+
+### Step 9.6: Present Completion Summary
+
+Show summary with:
+- Modules implemented
+- Tests added
+- Documentation updated
+- Deliverables verified
+- Subagents used
+- Quality metrics
 
 ---
 
 ## Step 10: Git Operations
 
-### Step 10.1: Stage and Commit
-
-Use `Bash` to stage and commit changes:
+### Step 10.1: Final Commit
 
 ```bash
 git add -A
-git commit -m "feat: implement FEATURE_NAME"
+git commit -m "feat: implement [FEATURE] [closes #[ISSUE]]"
 ```
 
-### Step 10.2: Pull Request (BLOCKING STEP)
-
-Check if `gh` command is available:
+### Step 10.2: Push Branch
 
 ```bash
-which gh
+git push -u origin [branch_name]
 ```
 
-**If gh is available:**
-Use the `question` tool:
-- "Would you like to create a pull request?"
+### Step 10.3: Create Pull Request (BLOCKING STEP)
+
+Use `question`:
+- "Create pull request?"
 - Options: "Yes", "No"
 
-**If Yes:**
-1. Use `gh pr create` with appropriate title and body
-2. Present the PR URL
+**If yes:**
 
-**If No:**
-- Present commit summary and branch name for manual PR creation
+Launch subagent for PR content:
 
-### Step 10.3: Update GitHub Issue Status
+```
+task(
+  subagent_type="general",
+  prompt="Create PR content for:\n\nFeature: [feature_name]\nIssue: [issue_number]\nModules: [list]\nTests: [list]\n\nReturn JSON with pr_title and pr_body."
+)
+```
 
-After successful completion, update the GitHub issue to reflect implementation status:
+Create PR:
+```bash
+gh pr create --title "[title]" --body "[body]" --base main
+```
 
-1. Use `Bash` to close the issue:
-   ```bash
-   gh issue close <ISSUE_NUMBER>
-   ```
+Capture PR URL.
 
-2. Optionally add a comment noting completion:
-   ```bash
-   gh issue comment <ISSUE_NUMBER> --body "Feature implementation complete. All deliverables verified and tests passing."
-   ```
+### Step 10.4: Update GitHub Issue
 
-**If the implementation was aborted or cancelled:**
-- Do not close the issue
-- Optionally add a comment: `gh issue comment <ISSUE_NUMBER> --body "Implementation started but not completed. Issue remains open for future work."`
-- Remove any `in-progress` label if present
+**If PR created:**
+```bash
+gh issue comment [ISSUE] --body "Complete. PR: [URL]"
+gh issue close [ISSUE]
+```
+
+**If no PR:**
+```bash
+gh issue comment [ISSUE] --body "Complete. Branch: [branch_name]"
+```
+
+**If cancelled:** Do not close issue
+
+---
+
+## Step 11: PR Review Handling
+
+### Step 11.1: Completion Options (BLOCKING STEP)
+
+Use `question`:
+- "PR created. What next?"
+- Options: "Mark complete", "Check PR comments", "Complete later"
+
+**If check comments:** Proceed to Step 11.2
+
+### Step 11.2: Retrieve PR Comments
+
+```bash
+gh pr list --head [branch] --json number --jq '.[0].number'
+gh pr view [pr] --json comments --jq '.comments'
+gh api graphql -f query='...'  # for inline comments
+```
+
+### Step 11.3: Analyze Comments
+
+Launch subagent to organize comments:
+
+```
+task(
+  subagent_type="general",
+  prompt="Organize these PR review comments into groups:\n\nGeneral: [comments]\nInline: [inline_comments]\n\nReturn JSON with groups array."
+)
+```
+
+### Step 11.4: Present Feedback (BLOCKING STEP)
+
+Show organized groups with complexity and approach.
+
+Use `question`:
+- "How to proceed with review feedback?"
+- Options: "Address all", "Address specific", "Mark complete", "Check later"
+
+### Step 11.5: Launch Parallel Review Responders
+
+For each selected group:
+
+```
+task(
+  subagent_type="general",
+  prompt="Load and follow instructions from /agents/review-responder.md, then address:\n\nGroup: [group_details]\nCurrent Code: [code_context]\nTest Files: [paths]\n\nReturn the structured JSON output."
+)
+```
+
+**All groups run in parallel.**
+
+### Step 11.6: Apply Changes
+
+For each completed subagent:
+1. Write modified files
+2. Run verification commands
+3. Check results
+
+**If pass:** Stage changes
+
+**If fail:** Fix or relaunch subagent
+
+### Step 11.7: Commit Changes
+
+```bash
+git add -A
+git commit -m "refactor: address PR review feedback"
+git push origin [branch_name]
+```
+
+### Step 11.8: Mark Comments Resolved
+
+```bash
+gh api graphql -f query='mutation...' -f threadId="[id]"
+```
+
+### Step 11.9: Repeat or Complete
+
+Return to Step 11.2 to check for new comments.
+
+Loop until user marks complete or exits.
 
 ---
 
 ## Navigation and Special Commands
 
 **Moving Forward:**
-- "next" or "continue" → Proceed to next step
-- "looks good" or "approved" → Approve current step
+- "next"/"continue" → Proceed
+- "looks good"/"approved" → Approve
 
-**Stopping (Abort):**
-- "stop" or "cancel" or "abort" → End implementation
-- Ask user: "Would you like to mark this feature as closed?"
-- Options: "Yes, close it", "No, keep it open"
+**Stopping:**
+- "stop"/"cancel"/"abort" → End implementation
+- Ask: "Close the feature issue?"
+- Options: "Yes, close it", "No, keep open"
 
-**If user confirms closing:**
-1. Use `Bash` to close the GitHub issue:
-   ```bash
-   gh issue close <ISSUE_NUMBER>
-   ```
-2. Optionally add a comment explaining why it was closed:
-   ```bash
-   gh issue comment <ISSUE_NUMBER> --body "Implementation cancelled/abandoned."
-   ```
-3. Exit the skill
+**If close:**
+```bash
+gh issue close [ISSUE] --comment "Cancelled."
+git tag -l "checkpoint/*[feature]*" | xargs git tag -d
+```
 
-**If user wants to keep it open:**
-- Optionally add a comment noting the partial implementation:
-  ```bash
-  gh issue comment <ISSUE_NUMBER> --body "Partial implementation completed. Work stopped at [describe current state]."
-  ```
-- Exit the skill without closing the issue
-- The GitHub issue remains available for future implementation attempts
+**If keep open:**
+```bash
+gh issue comment [ISSUE] --body "Partial implementation."
+```
 
 ---
 
-## Step 11: PR Review and Completion (BLOCKING STEP)
+## Subagent Reference
 
-After creating the pull request, pause for user review and handle any feedback.
+All subagents are defined in `/agents/`:
 
-### Step 11.1: Present Completion Options (BLOCKING STEP)
+| Subagent | File | Purpose |
+|----------|------|---------|
+| requirements-analyzer | [/agents/requirements-analyzer.md](/agents/requirements-analyzer.md) | Codebase analysis and planning |
+| test-writer | [/agents/test-writer.md](/agents/test-writer.md) | Create TDD tests |
+| stub-creator | [/agents/stub-creator.md](/agents/stub-creator.md) | Create failing stubs |
+| implement-function | [/agents/implement-function.md](/agents/implement-function.md) | Implement logic |
+| code-fixer | [/agents/code-fixer.md](/agents/code-fixer.md) | Fix linter/type issues |
+| deliverables-verifier | [/agents/deliverables-verifier.md](/agents/deliverables-verifier.md) | Verify deliverables |
+| review-responder | [/agents/review-responder.md](/agents/review-responder.md) | Address PR comments |
 
-**STOP** and use the `question` tool:
+### Launching Subagents
 
-"The feature implementation is complete and a pull request has been created. What would you like to do next?"
+All subagents are launched using the `task` tool with `subagent_type="general"`:
 
-Options:
-- "Mark feature as complete (no PR review needed)"
-- "Check PR for comments and review feedback"
-- "Complete the process later (exit skill)"
-
-**If "Mark feature as complete":**
-1. Update the feature plan status to "done" (see Step 10.3)
-2. Exit the skill
-
-**If "Complete the process later":**
-1. Exit the skill without changing status
-2. The feature plan remains open for future continuation
-
-**If "Check PR for comments":**
-1. Proceed to Step 11.2
-
-### Step 11.2: Retrieve PR Comments
-
-Use `Bash` to view PR comments:
-
-```bash
-gh pr view <pr_number> --comments
 ```
-
-If the PR number is not known, first retrieve it:
-
-```bash
-gh pr list --head <branch_name> --json number --jq '.[0].number'
+task(
+  subagent_type="general",
+  prompt="Load and follow instructions from /agents/[agent-name].md, then [specific context]"
+)
 ```
-
-### Step 11.3: Retrieve Inline Review Comments
-
-Use `gh api graphql` to query for review threads with inline comments:
-
-```bash
-gh api graphql -f query='
-query {
-  repository(owner: "<owner>", name: "<repo>") {
-    pullRequest(number: <pr_number>) {
-      reviewThreads(first: 100) {
-        nodes {
-          id
-          isResolved
-          comments(first: 100) {
-            nodes {
-              author { login }
-              body
-              path
-              line
-              originalLine
-            }
-          }
-        }
-      }
-    }
-  }
-}'
-```
-
-Extract owner and repo from the remote URL:
-
-```bash
-git remote get-url origin | sed 's/.*github.com[:/]\([^/]*\)/\([^/]*\).*/\1 \2/'
-```
-
-### Step 11.4: Present Review Feedback (BLOCKING STEP)
-
-Compile and present all comments:
-
-```markdown
-## PR Review Feedback
-
-### General Comments:
-[List general PR comments]
-
-### Inline Review Comments:
-[For each review thread]
-- **File:** `path/to/file`
-- **Line:** X
-- **Author:** @username
-- **Comment:** [comment body]
-- **Status:** [Resolved / Unresolved]
-```
-
-Use the `question` tool:
-
-"Here is the review feedback for this PR. How would you like to proceed?"
-
-Options:
-- "Address all comments"
-- "Address specific comments (select below)"
-- "Mark feature as complete (ignore remaining comments)"
-- "Check again later (exit skill)"
-
-**If "Address all comments" or "Address specific comments":**
-1. For each comment to address:
-   - Navigate to the file and line mentioned
-   - Read the relevant code context
-   - Make the requested changes
-   - Test the changes
-   - Commit with message referencing the review
-2. After addressing comments, push changes:
-   ```bash
-   git push origin <branch_name>
-   ```
-3. Return to Step 11.2 to check for new comments or updates
-
-**If "Mark feature as complete":**
-1. Update the feature plan status to "done"
-2. Exit the skill
-
-**If "Check again later":**
-1. Exit the skill
-2. The feature plan remains open
-
-### Step 11.5: Repeat Until Complete
-
-Repeat Steps 11.2-11.4 until:
-- The user chooses to mark the feature as complete, OR
-- The user chooses to exit and continue later
-
-Do NOT proceed without explicit user confirmation at each blocking step.
 
 ---
 
-## Tips for Best Results
+## Checkpoint and Rollback Strategy
 
-- Review the GitHub issue specification thoroughly before starting
-- Follow existing code patterns in the project
-- Run tests frequently during implementation
+### Creating Checkpoints
+
+```bash
+git add -A
+git commit -m "checkpoint: before [action]" --allow-empty 2>/dev/null || true
+git tag checkpoint/before-[action]-$(date +%s)
+```
+
+### Rollback
+
+```bash
+git reset --soft [checkpoint_tag]
+git checkout -- .
+git clean -fd
+```
+
+---
+
+## Performance Considerations
+
+### Parallel Points
+
+1. **Step 8.9:** Code-fixer runs parallel to test suite
+2. **Step 9.2:** 5 deliverables verifiers run in parallel
+3. **Step 11.5:** Review responders run in parallel per group
+
+### Sequential Requirements
+
+- Tests → Stubs → Implementation (must be sequential)
+- User approval required before proceeding from blocking steps
+
+---
+
+## Tips
+
+- Review issue spec thoroughly before starting
+- Follow patterns identified by requirements-analyzer
+- Use checkpoints liberally
+- Monitor subagent confidence scores
 - Don't skip manual testing if uncertain
