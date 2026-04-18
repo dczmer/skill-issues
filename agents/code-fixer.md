@@ -19,10 +19,6 @@ hidden: true
 
 Fix linter and type checker issues in code. Runs quality checks and applies fixes automatically, reporting any remaining issues that need manual attention.
 
-## When to Use
-
-Use during **Step 8.9** of the feature-implementation skill, running in parallel with the main test suite. This subagent handles code quality issues so the main agent can focus on test validation.
-
 ## Inputs
 
 ### Required Context

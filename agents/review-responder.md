@@ -19,10 +19,6 @@ hidden: true
 
 Address specific PR review comments by making code changes. Handles a group of related review comments, implementing the requested changes and verifying they work.
 
-## When to Use
-
-Use during **Step 11.5** of the feature-implementation skill. Multiple instances run in parallel, each handling a different group of related review comments.
-
 ## Inputs
 
 ### Required Context

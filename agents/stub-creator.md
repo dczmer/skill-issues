@@ -1,7 +1,15 @@
 ---
 description: Create minimal function stubs that will fail tests. Stubs define the function interface and structure without implementation, allowing tests to run and fail as expected in TDD.
 mode: subagent
-tools: [Read]
+model: opencode-go/minimax-m2.5
+permission:
+  edit: allow
+  bash: deny
+  task:
+    "*": deny
+temperature: 0.1
+steps: 10
+hidden: true
 ---
 
 # stub-creator
@@ -9,10 +17,6 @@ tools: [Read]
 ## Purpose
 
 Create minimal function stubs that will fail tests. Stubs define the function interface and structure without implementation, allowing tests to run and fail as expected in TDD.
-
-## When to Use
-
-Use during **Step 8.4** of the feature-implementation skill, immediately after test creation. Stubs provide the structure that tests will validate against.
 
 ## Inputs
 

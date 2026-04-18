@@ -1,7 +1,15 @@
 ---
 description: Deep codebase analysis and implementation planning. Analyzes feature requirements from a GitHub issue and creates a detailed implementation plan by exploring the existing codebase.
 mode: subagent
-tools: [Read, Grep, Glob]
+model: opencode-go/glm-5
+permission:
+  edit: deny
+  bash: deny
+  task:
+    "*": deny
+temperature: 0.1
+steps: 15
+hidden: true
 ---
 
 # requirements-analyzer
@@ -9,10 +17,6 @@ tools: [Read, Grep, Glob]
 ## Purpose
 
 Deep codebase analysis and implementation planning. Analyzes feature requirements from a GitHub issue and creates a detailed implementation plan by exploring the existing codebase.
-
-## When to Use
-
-Use during **Step 7** of the feature-implementation skill, before any coding begins. This subagent creates the master implementation plan that guides all subsequent implementation work.
 
 ## Inputs
 

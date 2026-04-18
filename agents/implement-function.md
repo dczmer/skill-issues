@@ -10,6 +10,7 @@ permission:
     "*": deny
 temperature: 0.2
 steps: 30
+hidden: true
 ---
 
 # implement-function
@@ -17,10 +18,6 @@ steps: 30
 ## Purpose
 
 Implement the actual function logic to make all tests pass. Writes complete, production-ready code that satisfies all test requirements and follows project patterns.
-
-## When to Use
-
-Use during **Step 8.7** of the feature-implementation skill, after tests are approved. Also used for retry attempts if initial implementation fails tests.
 
 ## Inputs
 

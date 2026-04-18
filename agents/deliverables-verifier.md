@@ -19,10 +19,6 @@ hidden: true
 
 Verify that specific categories of deliverables from the feature specification have been completed. Runs in parallel with other verifiers to speed up final verification.
 
-## When to Use
-
-Use during **Step 9.2** of the feature-implementation skill. Five instances run in parallel, each checking a different deliverable category.
-
 ## Categories
 
 Each subagent instance verifies one category:

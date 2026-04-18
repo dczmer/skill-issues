@@ -10,6 +10,7 @@ permission:
     "*": deny
 temperature: 0.2
 steps: 15
+hidden: true
 ---
 
 # test-writer
@@ -17,10 +18,6 @@ steps: 15
 ## Purpose
 
 Create comprehensive unit tests following Test-Driven Development (TDD) principles. Writes tests that define the expected behavior before any implementation exists.
-
-## When to Use
-
-Use during **Step 8.2** of the feature-implementation skill, for each function in the implementation order. Tests must be written and approved before stubs or implementation.
 
 ## Inputs
 
