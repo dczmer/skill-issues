@@ -31,55 +31,6 @@ You can provide supplemental context at invocation:
 
 ---
 
-## State Tracking
-
-Throughout the process, maintain an internal state object to track progress.
-
-### State Object Schema
-
-```yaml
-feature_state:
-  mode: "new" | "continue" | "existing_issue"
-  github_issue_number: null | "<ISSUE_NUMBER>"
-  feature_name: null | "<FEATURE_NAME>"
-  feature_name_sanitized: null | "<FEATURE_NAME with spaces as '-' and invalid chars removed>"
-  issue_context: null | "<Issue description from GitHub>"
-  sections:
-    description:
-      status: "pending" | "in_progress" | "approved" | "skipped"
-      iteration: 0
-      content: null
-    requirements:
-      status: "pending" | "in_progress" | "approved" | "skipped"
-      iteration: 0
-      content: null
-    constraints:
-      status: "pending" | "in_progress" | "approved" | "skipped"
-      iteration: 0
-      content: null
-    verification:
-      status: "pending" | "in_progress" | "approved" | "skipped"
-      iteration: 0
-      content: null
-    deliverables:
-      status: "pending" | "in_progress" | "approved" | "skipped"
-      iteration: 0
-      content: null
-  current_step: "0.1"
-  started_at: null
-  last_updated: null
-```
-
-### State Management Rules
-
-1. **Initialize** the state object at the very start
-2. **Update `current_step`** each time you transition to a new step
-3. **Update section status** immediately when a section's status changes
-4. **Increment `iteration`** each time you complete a gather/clarify/confirm cycle
-5. **Set `feature_name_sanitized`** after Section 1 is approved (replace spaces with `-`, remove invalid unix filename characters)
-
----
-
 ## Step 0: Check for GitHub Issues and Continuation
 
 ### Step 0.1: Check for Open GitHub Issues
@@ -100,31 +51,13 @@ Options: "Yes, check for open issues", "No, start fresh"
    Options: [List issue titles as options], "Create new issue", "Start without issue"
 
 **If existing issue selected:**
-1. Store the `github_issue_number` in state
-2. Store the issue body in `issue_context`
+1. Record the issue number for later reference
+2. Keep the issue body as context for the interview
 3. Parse the issue title as the feature name
-4. Set `mode` to "existing_issue"
-5. Present: "I'll use issue #N as the basis for this feature plan. I'll incorporate the existing issue description as context."
+4. Present: "I'll use issue #N as the basis for this feature plan. I'll incorporate the existing issue description as context."
 
 **If no issues found or user declines:**
-- Set `mode` to "new"
 - Proceed to Section 1
-
-### Step 0.2: Check for Existing Feature Document (Deprecated)
-
-**Note:** File-based feature plans in `./feature-plans/` are deprecated. This step exists only for backward compatibility.
-
-Use `Glob` to check if a `feature-plans/FEATURE_NAME.md` file already exists (where FEATURE_NAME is a sanitized feature name from a previous run).
-
-**If feature document exists:**
-1. Use `Read` to load the full contents
-2. Present: "I found an existing feature document. This file-based storage is deprecated. Would you like to migrate this to a GitHub issue and continue, or start fresh?"
-3. Options: "Migrate to GitHub issue", "Start fresh", "Cancel"
-4. If "Migrate to GitHub issue": Extract content and proceed to Step 6.3 to create/update the issue
-
-**If no existing document:**
-- Check for invocation modifiers or supplemental context
-- Proceed directly to Section 1
 
 ---
 
@@ -133,7 +66,7 @@ Use `Glob` to check if a `feature-plans/FEATURE_NAME.md` file already exists (wh
 ### Step 1.1: Initial Information Gathering
 
 **If existing issue context is available:**
-Review the issue description stored in `issue_context` and use it to pre-populate suggestions for the interview questions.
+Review the issue description from the selected issue and use it to pre-populate suggestions for the interview questions.
 
 Use `question` tool to gather the following information:
 
@@ -167,11 +100,25 @@ Use `AskUserQuestion` to ask these clarifying questions and wait for response.
 
 Before presenting the summary for approval, review the gathered information and offer proactive guidance. Consider:
 
-- Is the purpose statement clear and specific, or vague?
-- Is the expected behavior concrete enough for an agent to implement without ambiguity?
-- Are there obvious edge cases or failure modes not mentioned?
-- Are primary users/stakeholders relevant to include, or is this a single-user tool where that's noise?
-- Does the feature scope seem too broad or too narrow for a single implementation unit?
+**Purpose clarity:**
+- Does the purpose follow the format: "This feature enables [user] to [action] in order to [outcome]?"
+- Would a developer understand the value without domain expertise?
+
+**Behavior concreteness:**
+- Can a test case be written from this description without asking clarifying questions?
+- Are inputs (triggers), processing (logic), and outputs (results) all defined?
+
+**Edge cases and failures:**
+- Has behavior been defined for: invalid/missing input, timeout conditions, and dependency failures?
+- Are there limits documented (max items, size bounds, rate limits)?
+
+**Stakeholder relevance:**
+- If this is a single-developer internal tool → stakeholder section can be brief
+- If this affects teammates, users, or external systems → each stakeholder group should be listed with their specific interest
+
+**Scope sizing:**
+- Can this feature be described in one sentence using "and"/"or" at most once?
+- Does it have 3-7 distinct functional requirements (fewer suggests scope is too narrow, more suggests it should split)?
 
 Present your analysis as a short bulleted list of **suggestions and potential improvements**, for example:
 - "The expected behavior doesn't mention what happens when X — consider specifying this"
@@ -243,12 +190,29 @@ Use the `question` tool to ask these clarifying questions and wait for response.
 
 Before presenting the summary for approval, review the requirements and offer proactive guidance. Consider:
 
-- Are any functional requirements ambiguous or untestable as written?
-- Are there missing error handling cases (what happens when input is invalid, missing, or unexpected)?
-- Are success conditions specific and verifiable, or subjective?
-- Do the user interaction flows cover the full happy path and key failure paths?
-- Are there implicit requirements that should be made explicit (e.g., atomicity, ordering, idempotency)?
-- Do any requirements conflict with each other or with what was described in Section 1?
+**Testability of requirements:**
+- Can each requirement be verified with a single pass/fail test? If multiple tests are needed, the requirement should be split.
+- Do all requirements avoid subjective terms ("fast", "user-friendly", "appropriate") without quantified definitions?
+
+**Error handling coverage:**
+- For each input, is behavior defined for: valid case, empty/null case, format error case, and permission denied case?
+- Is there a requirement specifying behavior when external dependencies (APIs, databases, files) are unavailable?
+
+**Success condition concreteness:**
+- Does each success condition include: observable output (what changes), measurable threshold (if applicable), and verification method?
+- Replace vague conditions like "system handles load" with specific metrics: "processes N requests/second with <100ms latency at P95"
+
+**Interaction flow completeness:**
+- Happy path checklist: starting state → trigger action → expected state change → confirmation/output
+- Failure path checklist: at each step, document behavior when: user cancels, input is invalid, timeout occurs, or concurrent modification happens
+
+**Implicit requirement documentation:**
+- Specify if operations must be: atomic (all-or-nothing), ordered (sequence matters), idempotent (repeating has same effect), or exclusive (no concurrent execution)
+- Document data persistence expectations: cached vs. stored, immediate vs. eventual consistency
+
+**Cross-reference consistency:**
+- Does any requirement describe functionality outside the "Scope (IN)" from Section 1?
+- Flag conflicts: if Requirement A requires X and Requirement B requires not-X, this must be resolved
 
 Present your analysis as a short bulleted list of **suggestions and potential improvements**.
 
@@ -314,11 +278,25 @@ Use the `question` tool to ask these clarifying questions and wait for response.
 
 Before presenting the summary for approval, review the constraints and offer proactive guidance. Consider:
 
-- Do any constraints conflict with or make the requirements in Section 2 impossible or harder than necessary?
-- Are there security constraints implied by the requirements that haven't been stated explicitly?
-- Are any constraints too vague to be actionable (e.g., "must be fast" vs. a specific benchmark)?
-- Are empty constraint categories worth keeping, or should they be omitted to reduce noise?
-- Are there constraints that are obvious from the project context (e.g., from AGENTS.md) that could be auto-populated rather than asked about?
+**Constraint-requirement alignment:**
+- Map each constraint to affected requirements: does it prevent implementation, increase complexity, or extend timeline?
+- Flag direct contradictions (e.g., "must work offline" vs. "real-time cloud sync") for resolution
+
+**Security constraint coverage:**
+- For each data input/output from Section 2, verify constraints exist for: encryption at rest, encryption in transit, access control, and audit logging
+- If user data is processed: are PII handling, data retention limits, and deletion procedures specified?
+
+**Constraint measurability:**
+- Performance constraints should include: metric (latency/throughput/memory), threshold (specific number), and conditions (load level, data size)
+- Compatibility constraints should specify: exact versions supported, deprecation timeline, and upgrade/migration path
+
+**Category utility:**
+- Remove any category containing only "None" or "No constraints identified"
+- Merge sparse categories: if two categories have fewer than 2 items combined, consolidate them
+
+**Project-context constraints:**
+- Review AGENTS.md for implied constraints: language versions, framework requirements, environment restrictions
+- Check configuration files (flake.nix, package.json, etc.) for dependency versions that should be listed as constraints
 
 Present your analysis as a short bulleted list of **suggestions and potential improvements**.
 
@@ -386,12 +364,30 @@ Use the `question` tool to ask these clarifying questions and wait for response.
 
 Before presenting the summary for approval, review the verification plan and offer proactive guidance. Consider:
 
-- Do the edge cases listed actually cover the failure modes described in Section 2's requirements?
-- Are there security-relevant edge cases (e.g., path traversal, injection, boundary inputs) that are missing?
-- Is the success criteria description specific enough for an agent to self-evaluate, or is it vague?
-- Are any behaviors marked for unit testing that are actually untestable without mocking or manual interaction? Flag these explicitly.
-- Are there behaviors that can only be verified manually? Make sure they are listed under manual testing.
-- Does the test plan reference the correct test patterns from the project's AGENTS.md or established conventions?
+**Edge case coverage:**
+- Cross-reference: for each error handling requirement in Section 2, verify a corresponding edge case test exists
+- Check coverage matrix: valid input, invalid format, missing/empty input, boundary values, concurrency/race conditions
+
+**Security-relevant test cases:**
+- For file path inputs: test path traversal (../), absolute paths, symlink resolution, and null bytes
+- For user-provided strings: test injection patterns (SQL, command, HTML), Unicode edge cases, and maximum length overflow
+- For numeric inputs: test boundary values (0, -1, max int), type confusion (string "123" vs number 123), and precision edge cases
+
+**Success criteria specificity:**
+- Success criteria must be observable: verifiable via assertion, checkable in logs/output, or inspectable in UI state
+- Replace subjective criteria ("works well", "looks correct") with objective ones ("returns expected output", "completes with exit code 0", "matches reference snapshot")
+
+**Test type appropriateness:**
+- Flag for manual testing: UI requiring visual verification, external hardware, or third-party services without test endpoints
+- Flag for integration testing: database transactions, file system operations, network requests, or multi-process coordination
+
+**Manual testing documentation:**
+- Document manual tests with: exact setup steps, specific actions to perform, and observable pass/fail criteria
+- If manual testing exceeds 10 minutes per cycle, flag for potential automation or simplified validation
+
+**Convention compliance:**
+- Verify test file location matches project convention (tests/ vs __tests__/ vs spec/)
+- Check test file naming matches AGENTS.md pattern (e.g., *.test.ts, *_spec.lua, test_*.py)
 
 Present your analysis as a short bulleted list of **suggestions and potential improvements**.
 
@@ -464,12 +460,29 @@ Use the `question` tool to ask these clarifying questions and wait for response.
 
 Before presenting the summary for approval, review the deliverables and offer proactive guidance. Consider:
 
-- Do the public function signatures have enough detail for an agent to implement them (parameter names, types, return values)?
-- Are there functions implied by the requirements in Section 2 that are missing from the deliverables list?
-- Are any categories empty (e.g., "Deployment Artifacts: None") — if so, suggest omitting them for clarity?
-- Is the documentation list realistic and necessary, or boilerplate that won't actually be written?
-- Are there new files to create vs. existing files to modify? Both should be explicit.
-- Do the deliverables fully account for all the success conditions in Section 2?
+**Function signature completeness:**
+- Each function signature should include: function name, parameter list with types and descriptions, return type with description, and error/exception types thrown
+- Example format: `function_name(param1: Type, param2: Type): ReturnType` followed by brief description
+
+**Requirement-to-deliverable traceability:**
+- For each requirement in Section 2, map it to a specific function: requirement text → function name → where it's defined
+- Flag requirements describing data transformation, validation, or storage that don't have corresponding functions listed
+
+**Category utility:**
+- Remove any category with only "None", "N/A", or fewer than 2 items
+- If a category has only one generic item like "Documentation updates", merge it into the most closely related populated category
+
+**Documentation specificity:**
+- For each documentation item, specify: format (README section, API doc file, inline comments), location (file path or URL), and audience (users, developers, operators)
+- Remove boilerplate like "Update docs" unless specific changes are identified; add explicit file paths like "Add section to README.md explaining configuration options"
+
+**New vs. modified artifacts:**
+- Tag each deliverable as [NEW] or [MODIFY]: "src/utils.py [MODIFY]" vs "src/new_module.py [NEW]"
+- For modifications, specify line ranges or function names when possible; for new files, specify directory location
+
+**Success condition coverage:**
+- Create a traceability matrix: list each success condition from Section 2 and map to the deliverable(s) that satisfy it
+- Flag any success condition that doesn't have at least one deliverable explicitly responsible for it
 
 Present your analysis as a short bulleted list of **suggestions and potential improvements**.
 
@@ -525,13 +538,13 @@ Once all sections are complete:
 
 ### Step 6.2: Create or Update GitHub Issue
 
-**If `github_issue_number` is set (existing issue):**
-1. Use `Bash` to update the issue body:
+**If an existing issue was selected:**
+1. Use `Bash` to update the issue body and ensure it has the `feature-plan` label:
    ```bash
    gh issue edit <ISSUE_NUMBER> --body "$(cat <<'EOF'
    <Compiled markdown content here>
    EOF
-   )"
+   )" --add-label "feature-plan"
    ```
 
 **If no issue exists:**
@@ -543,7 +556,7 @@ Once all sections are complete:
    )" --label "feature-plan"
    ```
 2. Capture the issue number from the output
-3. Store it in `github_issue_number`
+3. Record it for reference in subsequent steps
 
 **Success message:**
 ```
@@ -552,17 +565,6 @@ Feature specification updated in GitHub issue #<NUMBER>: <Feature Name>
 GitHub issue status: open
 To implement this feature, invoke: /feature-implementation
 ```
-
-### Step 6.3: Deprecated File-Based Storage
-
-**Note:** File-based feature plans in `./feature-plans/` are deprecated. This section is retained for backward compatibility only. New feature plans should use GitHub issues exclusively.
-
-If migrating from an existing file-based plan:
-- The content is transferred to the GitHub issue
-- The original file is left in place but is no longer the source of truth
-- Future edits should be made through the GitHub issue
-
-
 
 ---
 

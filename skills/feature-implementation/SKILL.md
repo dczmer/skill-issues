@@ -34,40 +34,6 @@ If feature name is provided, that specification file will be used directly. Othe
 
 ---
 
-## State Tracking
-
-Throughout the implementation, maintain an internal state object.
-
-### State Object Schema
-
-```yaml
-implementation_state:
-  github_issue_number: null | "<ISSUE_NUMBER>"
-  feature_name: null | "<FEATURE_NAME>"
-  feature_name_sanitized: null | "<FEATURE_NAME with spaces as '-' and invalid chars removed>"
-  issue_body: null | "<Full issue body content>"
-  branch_name: null | "feature/FEATURE_NAME"
-  branch_created: false
-  current_module: null
-  modules: []
-  all_tests_pass: false
-  deliverables_verified: false
-  current_step: "0"
-  started_at: null
-  last_updated: null
-```
-
-### State Management Rules
-
-1. **Initialize** the state object at the very start
-2. **Update `current_step`** each time you transition to a new step
-3. **Set `github_issue_number`** and `issue_body` after Step 0
-4. **Set `feature_name_sanitized`** after parsing the issue (lowercase, spaces to `-`, remove invalid chars)
-5. **Set `branch_name`** after Step 6
-6. **Set `deliverables_verified`** to `true` after Step 9.2
-
----
-
 ## Step 0: Select GitHub Issue
 
 ### Step 0.1: Check for GitHub Issues
@@ -90,22 +56,21 @@ Parse the JSON results to extract issue number, title, and body.
 **If one issue found:**
 1. Display issue title and ask: "Implement this feature?"
 2. Options: "Yes", "No, select different issue", "Cancel"
-3. If "Yes", set `github_issue_number` and `issue_body` and proceed to Step 0.3
+3. If "Yes", record the selected issue number and body, then proceed to Step 0.3
 
 **If multiple issues found:**
 1. Present list of available issues (showing issue numbers and titles)
 2. Use `question` tool to prompt: "Which feature would you like to implement?"
 3. Options: List of issue titles with numbers, "Cancel"
-4. After selection, set `github_issue_number` and `issue_body` and proceed to Step 0.3
+4. After selection, record the selected issue number and body, then proceed to Step 0.3
 
 ### Step 0.3: Parse Specification
 
 After selecting an issue:
-1. Store the full issue body in `issue_body`
+1. Keep track of the issue number and body for later use
 2. Extract the feature name from the issue title
-3. Derive `feature_name_sanitized` by converting to lowercase, replacing spaces with `-`, and removing characters not matching `[A-Za-z0-9-_]`
+3. Derive a sanitized feature name by converting to lowercase, replacing spaces with `-`, and removing characters not matching `[A-Za-z0-9-_]`
 4. Parse the issue body to extract all sections (Description, Requirements, Constraints, Verification, Deliverables) by looking for `## Section X:` headers
-5. Update state with all extracted information
 
 ### Step 0.4: Legacy File-Based Plans (Deprecated)
 
@@ -129,11 +94,11 @@ Options:
 **If "Specify custom branch name":**
 1. Ask: "What branch name would you like to use?"
 2. Validate the branch name (no spaces, valid characters)
-3. Update `branch_name` in state
+3. Use this branch name for subsequent git operations
 
 **If "Skip branch creation":**
 1. Note: "Branch creation skipped. Proceeding with current branch."
-2. Set `branch_created: false`
+2. Note that branch creation was skipped
 3. Proceed to Step 7
 
 ### Step 6.2: Create Branch
@@ -144,7 +109,7 @@ Use `Bash` to create the feature branch:
 git checkout -b <branch_name>
 ```
 
-Update state: `branch_created: true`
+Note that the branch was created successfully
 
 ---
 
@@ -186,7 +151,7 @@ Use the `question` tool to ask:
 **If user wants modifications:**
 1. Present revised plan
 2. Wait for approval**If approved:**
-- Update state with the final implementation plan
+- Proceed with this implementation plan
 - Proceed to Step 8
 
 ---
@@ -404,19 +369,17 @@ After successful completion, update the GitHub issue to reflect implementation s
 
 1. Use `Bash` to close the issue:
    ```bash
-   gh issue close <github_issue_number>
+   gh issue close <ISSUE_NUMBER>
    ```
 
 2. Optionally add a comment noting completion:
    ```bash
-   gh issue comment <github_issue_number> --body "Feature implementation complete. All deliverables verified and tests passing."
+   gh issue comment <ISSUE_NUMBER> --body "Feature implementation complete. All deliverables verified and tests passing."
    ```
-
-3. Update state to reflect completion
 
 **If the implementation was aborted or cancelled:**
 - Do not close the issue
-- Optionally add a comment: `gh issue comment <github_issue_number> --body "Implementation started but not completed. Issue remains open for future work."`
+- Optionally add a comment: `gh issue comment <ISSUE_NUMBER> --body "Implementation started but not completed. Issue remains open for future work."`
 - Remove any `in-progress` label if present
 
 ---
@@ -435,18 +398,18 @@ After successful completion, update the GitHub issue to reflect implementation s
 **If user confirms closing:**
 1. Use `Bash` to close the GitHub issue:
    ```bash
-   gh issue close <github_issue_number>
+   gh issue close <ISSUE_NUMBER>
    ```
 2. Optionally add a comment explaining why it was closed:
    ```bash
-   gh issue comment <github_issue_number> --body "Implementation cancelled/abandoned."
+   gh issue comment <ISSUE_NUMBER> --body "Implementation cancelled/abandoned."
    ```
 3. Exit the skill
 
 **If user wants to keep it open:**
 - Optionally add a comment noting the partial implementation:
   ```bash
-  gh issue comment <github_issue_number> --body "Partial implementation completed. Work stopped at [describe current state]."
+  gh issue comment <ISSUE_NUMBER> --body "Partial implementation completed. Work stopped at [describe current state]."
   ```
 - Exit the skill without closing the issue
 - The GitHub issue remains available for future implementation attempts
