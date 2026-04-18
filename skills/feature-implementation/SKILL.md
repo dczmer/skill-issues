@@ -1,7 +1,7 @@
 ---
 name: feature-implementation
-description: Implements a feature from a GitHub issue specification using TDD approach with subagent delegation. Use when user asks to "implement a feature", "start implementation", or after completing feature-planning.
-allowed-tools: "Read,Grep,Glob,Bash,Write,Edit,todowrite,skill,task,question"
+description: Implements a feature from a GitHub issue specification using TDD approach with subagent delegation via @ mentions. Use when user asks to "implement a feature", "start implementation", or after completing feature-planning.
+allowed-tools: "Read,Grep,Glob,Bash,Write,Edit,todowrite,skill,question"
 ---
 
 ## Introduction
@@ -126,15 +126,21 @@ git checkout -b <branch_name>
 
 ## Step 7: Implementation Planning
 
-### Step 7.1: Launch Requirements Analyzer
+### Step 7.1: Invoke Requirements Analyzer
 
-Use `task` to launch the requirements-analyzer subagent:
+Use `@` mention to invoke the requirements-analyzer subagent:
 
 ```
-task(
-  subagent_type="general",
-  prompt="Load and follow instructions from /agents/requirements-analyzer.md, then analyze:\n\nFeature: [feature_name]\nSanitized: [sanitized_name]\nIssue Body:\n[issue_body]\n\nReturn the structured JSON output as specified in the agent definition."
-)
+@requirements-analyzer Analyze this feature:
+
+Feature: [feature_name]
+Sanitized: [sanitized_name]
+Issue Body:
+[issue_body]
+
+Repository Root: [root_path]
+
+Return the structured JSON output as specified in your definition.
 ```
 
 **Wait for completion and parse the JSON response.**
@@ -179,15 +185,23 @@ git commit -m "checkpoint: before [module].[function]" --allow-empty
 git tag checkpoint/before-[module]-[function]-$(date +%s)
 ```
 
-### Step 8.2: Launch Test Writer
+### Step 8.2: Invoke Test Writer
 
-Use `task` to launch test-writer subagent:
+Use `@` mention to invoke the test-writer subagent:
 
 ```
-task(
-  subagent_type="general",
-  prompt="Load and follow instructions from /agents/test-writer.md, then create tests for:\n\nFunction: [function_name]\nSignature: [signature]\nPurpose: [purpose]\nModule: [module]\nRequirements: [relevant_requirements]\nPatterns: [patterns_observed]\n\nReturn the structured JSON output."
-)
+@test-writer Create comprehensive tests for:
+
+Function: [function_name]
+Signature: [signature]
+Purpose: [purpose]
+Module: [module]
+Requirements: [relevant_requirements]
+Patterns: [patterns_observed]
+Test Framework: [framework]
+Reference Tests: [test_files]
+
+Return the structured JSON output.
 ```
 
 **Wait for completion and parse JSON.**
@@ -196,15 +210,20 @@ task(
 
 Write test code to the specified file path.
 
-### Step 8.4: Launch Stub Creator
+### Step 8.4: Invoke Stub Creator
 
-Use `task` to launch stub-creator subagent:
+Use `@` mention to invoke the stub-creator subagent:
 
 ```
-task(
-  subagent_type="general",
-  prompt="Load and follow instructions from /agents/stub-creator.md, then create stubs for:\n\nFunction: [function_name]\nSignature: [signature]\nModule Path: [module_path]\nTest Content: [test_content]\n\nReturn the structured JSON output."
-)
+@stub-creator Create minimal stubs for:
+
+Function: [function_name]
+Signature: [signature]
+Module Path: [module_path]
+Test Content: [test_content]
+Existing Module: [current_content or null]
+
+Return the structured JSON output.
 ```
 
 **Wait for completion.**
@@ -234,15 +253,23 @@ Use `question`:
 
 **If approved:** Proceed to Step 8.7
 
-### Step 8.7: Launch Implementation Subagent
+### Step 8.7: Invoke Implementation Subagent
 
-Use `task` to launch implement-function subagent:
+Use `@` mention to invoke the implement-function subagent:
 
 ```
-task(
-  subagent_type="general",
-  prompt="Load and follow instructions from /agents/implement-function.md, then implement:\n\nFunction: [function_name]\nSignature: [signature]\nPurpose: [purpose]\nTest Content: [test_content]\nStub Code: [stub_code]\nReferences: [similar_functions]\nPatterns: [patterns_observed]\n\nReturn the structured JSON output."
-)
+@implement-function Implement this function:
+
+Function: [function_name]
+Signature: [signature]
+Purpose: [purpose]
+Test Content: [test_content]
+Stub Code: [stub_code]
+References: [similar_functions]
+Patterns: [patterns_observed]
+Requirements: [requirements]
+
+Return the structured JSON output.
 ```
 
 **Wait for completion.**
@@ -264,14 +291,18 @@ uv run pytest [test_file] -v 2>&1
 
 ### Step 8.9: Parallel Quality Checks
 
-Launch code-fixer subagent in parallel with main test suite:
+Invoke code-fixer subagent in parallel with main test suite:
 
-**Subagent (via task):**
+**Subagent (via @ mention):**
 ```
-task(
-  subagent_type="general",
-  prompt="Load and follow instructions from /agents/code-fixer.md, then fix:\n\nFiles: [modified_files]\nLinter: [ruff/etc]\nType Checker: [mypy/etc]\n\nReturn the structured JSON output."
-)
+@code-fixer Fix quality issues in:
+
+Files: [modified_files]
+Linter: [ruff/etc]
+Type Checker: [mypy/etc]
+Config Files: [pyproject.toml, .ruff.toml]
+
+Return the structured JSON output.
 ```
 
 **Main agent (parallel):**
@@ -325,16 +356,63 @@ git tag checkpoint/after-[module]-[function]-$(date +%s)
 
 Extract deliverables from issue body Section 5.
 
-### Step 9.2: Launch Parallel Deliverables Verifiers
+### Step 9.2: Invoke Parallel Deliverables Verifiers
 
-Launch 5 subagents in parallel (one per category):
+Invoke 5 subagents in parallel (one per category):
 
+**Public Functions/APIs:**
 ```
-# For each category: Public Functions, User-Facing Features, Documentation, Configuration, Deployment
-task(
-  subagent_type="general",
-  prompt="Load and follow instructions from /agents/deliverables-verifier.md, then verify:\n\nCategory: [category_name]\nDeliverables: [list]\nImplementation: [current_state]\n\nReturn the structured JSON output."
-)
+@deliverables-verifier Verify Public Functions/APIs:
+
+Category: Public Functions/APIs
+Deliverables: [list]
+Implementation: [current_state]
+
+Return the structured JSON output.
+```
+
+**User-Facing Features:**
+```
+@deliverables-verifier Verify User-Facing Features:
+
+Category: User-Facing Features
+Deliverables: [list]
+Implementation: [current_state]
+
+Return the structured JSON output.
+```
+
+**Documentation:**
+```
+@deliverables-verifier Verify Documentation:
+
+Category: Documentation
+Deliverables: [list]
+Implementation: [current_state]
+
+Return the structured JSON output.
+```
+
+**Configuration/Infrastructure:**
+```
+@deliverables-verifier Verify Configuration/Infrastructure:
+
+Category: Configuration/Infrastructure
+Deliverables: [list]
+Implementation: [current_state]
+
+Return the structured JSON output.
+```
+
+**Deployment Artifacts:**
+```
+@deliverables-verifier Verify Deployment Artifacts:
+
+Category: Deployment Artifacts
+Deliverables: [list]
+Implementation: [current_state]
+
+Return the structured JSON output.
 ```
 
 **Wait for all to complete.**
@@ -400,13 +478,18 @@ Use `question`:
 
 **If yes:**
 
-Launch subagent for PR content:
+Ask a subagent to generate PR content:
 
 ```
-task(
-  subagent_type="general",
-  prompt="Create PR content for:\n\nFeature: [feature_name]\nIssue: [issue_number]\nModules: [list]\nTests: [list]\n\nReturn JSON with pr_title and pr_body."
-)
+@general Create PR content for this feature:
+
+Feature: [feature_name]
+Issue: [issue_number]
+Modules: [list]
+Tests: [list]
+Deliverables: [list]
+
+Return JSON with pr_title and pr_body.
 ```
 
 Create PR:
@@ -453,13 +536,18 @@ gh api graphql -f query='...'  # for inline comments
 
 ### Step 11.3: Analyze Comments
 
-Launch subagent to organize comments:
+Ask subagent to organize comments:
 
 ```
-task(
-  subagent_type="general",
-  prompt="Organize these PR review comments into groups:\n\nGeneral: [comments]\nInline: [inline_comments]\n\nReturn JSON with groups array."
-)
+@general Organize these PR review comments into groups:
+
+General Comments:
+[comments]
+
+Inline Comments:
+[inline_comments]
+
+Return JSON with groups array including complexity assessment.
 ```
 
 ### Step 11.4: Present Feedback (BLOCKING STEP)
@@ -470,29 +558,42 @@ Use `question`:
 - "How to proceed with review feedback?"
 - Options: "Address all", "Address specific", "Mark complete", "Check later"
 
-### Step 11.5: Launch Parallel Review Responders
+### Step 11.5: Invoke Parallel Review Responders
 
-For each selected group:
+For each selected group, invoke via `@` mention:
 
+**Example invocation:**
 ```
-task(
-  subagent_type="general",
-  prompt="Load and follow instructions from /agents/review-responder.md, then address:\n\nGroup: [group_details]\nCurrent Code: [code_context]\nTest Files: [paths]\n\nReturn the structured JSON output."
-)
+@review-responder Address this review feedback group:
+
+Group ID: [group_id]
+Type: [style/documentation/logic]
+Files: [file_paths]
+Comments:
+- [comment 1 details]
+- [comment 2 details]
+
+Current Code:
+[code_context]
+
+Test Files: [paths]
+Patterns: [observed_patterns]
+
+Return the structured JSON output.
 ```
 
 **All groups run in parallel.**
 
 ### Step 11.6: Apply Changes
 
-For each completed subagent:
-1. Write modified files
+For each completed subagent response:
+1. Write modified files from response
 2. Run verification commands
 3. Check results
 
 **If pass:** Stage changes
 
-**If fail:** Fix or relaunch subagent
+**If fail:** Fix or re-invoke subagent with failure context
 
 ### Step 11.7: Commit Changes
 
@@ -554,16 +655,23 @@ All subagents are defined in `/agents/`:
 | deliverables-verifier | [/agents/deliverables-verifier.md](/agents/deliverables-verifier.md) | Verify deliverables |
 | review-responder | [/agents/review-responder.md](/agents/review-responder.md) | Address PR comments |
 
-### Launching Subagents
+### Invoking Subagents
 
-All subagents are launched using the `task` tool with `subagent_type="general"`:
+All subagents are invoked using `@` mentions with the agent name:
 
 ```
-task(
-  subagent_type="general",
-  prompt="Load and follow instructions from /agents/[agent-name].md, then [specific context]"
-)
+@[agent-name] [Context and instructions]
+
+[Structured input data]
+
+Return the structured JSON output.
 ```
+
+**Notes:**
+- Subagents defined in `/agents/` are automatically available via `@` mentions
+- The agent's `description` field determines when it's invoked automatically
+- Parallel invocation: Multiple `@` mentions can be sent in parallel
+- Response format: All agents return structured JSON as defined in their SKILL.md
 
 ---
 
