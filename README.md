@@ -23,29 +23,12 @@ This library provides the following skills for use with agentic coding tools:
 
 ## Installation
 
-### As OpenCode Plugin
-
 Install skills and agents into OpenCode's configuration:
 
 ```bash
-# Global installation (recommended)
 ln -s $(pwd) ~/.config/opencode/skills/skill-issues
 
-# Or for agents only
 ln -s $(pwd)/agents ~/.config/opencode/agents/skill-issues
-
-# Claude compatibility (legacy)
-ln -s $(pwd) ~/.agents/skills/skill-issues
-```
-
-### Project-Local Installation
-
-For project-specific usage:
-
-```bash
-# Within your project
-cd your-project/
-ln -s /path/to/skill-issues .opencode/skills/skill-issues
 ```
 
 ## Verification
