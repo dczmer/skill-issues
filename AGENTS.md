@@ -4,61 +4,14 @@ Guidelines for agentic coding agents operating in this repository.
 
 ## Project Overview
 
-This is a personal skills library containing markdown-based skill definition files (SKILL.md) for use with agentic coding tools. Each skill defines structured workflows and instructions that agents can follow.
+This is an **OpenCode plugin** providing a personal skills library with custom subagents and markdown-based skill definitions. It follows the OpenCode plugin architecture while maintaining compatibility with Claude and other agentic tools.
 
-## Build/Lint/Test Commands
+**Key Features:**
+- **Skills**: Reusable instruction sets loaded on-demand via the native `skill` tool
+- **Subagents**: Specialized agents for task delegation via the `task` tool or `@` mention
+- **OpenCode Native**: Designed for `~/.config/opencode/` with `.agents/` compatibility
 
-### Environment Setup
-
-```bash
-# Enter Nix dev shell (provides uv)
-nix develop
-
-# Or manually: uv venv .venv && source .venv/bin/activate && uv sync
-```
-
-### Dependencies
-
-```bash
-# Install dependencies
-uv sync
-
-# Install Python if needed
-uv python install
-```
-
-### Testing Skills
-
-```bash
-# Run agentskills CLI to validate/test skill definitions
-agentskills --help
-
-# Validate a specific skill
-agentskills validate skills/project-plan-formulation/SKILL.md
-```
-
-### Running a Single Test
-
-```bash
-# If pytest tests exist (check tests/ directory)
-uv run pytest tests/path/to/test_file.py::test_function_name -v
-
-# Run specific pytest marker
-uv run pytest -m "marker_name" -v
-```
-
-### Linting and Formatting
-
-```bash
-# Python linting (if ruff is configured)
-uv run ruff check .
-
-# Python formatting
-uv run ruff format .
-
-# Markdown linting (if mdl or similar is installed)
-mdl skills/**/*.md
-```
+---
 
 ## File Structure
 
@@ -67,26 +20,68 @@ skill-issues/
 ├── skills/                      # Skill definitions directory
 │   └── <skill-name>/           # Each skill in its own directory
 │       ├── SKILL.md            # Main skill definition (required)
-│       └── references/         # Supporting reference documents
-│           ├── *.md            # Reference files loaded by skill
-├── pyproject.toml              # Python project configuration
+│       ├── references/         # Supporting reference documents
+│       │   └── *.md            # Reference files loaded by skill
+│       └── scripts/            # Reusable scripts for skill implementation
+│           └── *.sh            # Bash or Python scripts
+├── agents/                      # Custom subagent definitions
+│   └── <agent-name>.md         # Agent configuration files
 ├── flake.nix                   # Nix development shell
+├── pyproject.toml              # Python project configuration
 ├── uv.lock                     # Locked dependencies
 └── .python-version             # Python version
 ```
 
-## Code Style Guidelines
+---
 
-### Markdown Style
+## Build/Lint/Test Commands
 
-**SKILL.md Structure:**
+### Environment Setup
+
+```bash
+# Enter Nix dev shell (provides uv, mdl, gh)
+nix develop
+```
+
+### Testing Skills
+
+```bash
+# Run agentskills CLI to validate skill definitions
+agentskills --help
+
+# Validate a specific skill
+agentskills validate skills/project-plan-formulation/SKILL.md
+
+# Validate all skills
+for skill in skills/*/SKILL.md; do
+    agentskills validate "$skill"
+done
+```
+
+### Linting and Formatting
+
+```bash
+# Markdown linting
+mdl skills/**/*.md agents/**/*.md
+```
+
+---
+
+## Skill Development
+
+### SKILL.md Structure
+
+All skills must be named `SKILL.md` (uppercase) and include YAML frontmatter:
+
 ```markdown
 ---
-name: skill-name
-description: Brief description of what the skill does
-allowed-tools: "Tool1,Tool2,Tool3"
-version: "X.Y.Z"
-author: "Author Name"
+name: skill-name                # Required: kebab-case identifier
+version: "1.0.0"                # Semantic versioning
+description: Brief description  # Required: one-line summary (1-1024 chars)
+allowed-tools: "Tool1,Tool2"    # Tools this skill uses
+author: "Author Name"           # Optional
+license: "MIT"                  # Optional
+compatibility: "opencode"       # Optional: opencode, claude, all
 ---
 
 ## Introduction
@@ -108,118 +103,282 @@ Instructions for this sub-step.
 ---
 ```
 
-**Reference Files:**
-- Organize supporting content in `references/` directory
-- Load reference files only when needed (e.g., on error scenarios)
-- Use descriptive filenames: `error-handling.md`, `best-practices.md`
-
-### Formatting Rules
-
-1. **Headings:** Use ATX style (`#`, `##`, `###`)
-2. **Lists:** Use `-` for unordered, `1.` for ordered
-3. **Code blocks:** Specify language for syntax highlighting
-4. **Emphasis:** Use `**bold**` for important terms, `*italic*` for emphasis
-5. **Line length:** Wrap at 80-120 characters for readability
-6. **Blank lines:** Use one blank line between sections, two before headings
-
 ### Naming Conventions
 
+- **Skill names:** Must match `^[a-z0-9]+(-[a-z0-9]+)*$`
+  - 1-64 characters
+  - Lowercase alphanumeric with single hyphens
+  - Must match the directory name
 - **Skill directories:** `kebab-case` (e.g., `project-plan-formulation`)
-- **SKILL.md:** Always exactly `SKILL.md` (uppercase)
-- **Reference files:** `kebab-case.md` (e.g., `invocation-modes.md`)
+- **Reference files:** `kebab-case.md` (e.g., `error-handling.md`)
 
-### YAML Front Matter
+### Reference Files
 
-All SKILL.md files must include:
-```yaml
----
-name: skill-name                # Required: kebab-case identifier
-description: Description text   # Required: one-line summary
-allowed-tools: "Tool1,Tool2"    # Required: comma-separated tool list
-version: "1.0.0"                # Required: semantic versioning
-author: "Author Name"           # Optional
----
+Organize supporting content in `references/` subdirectories:
+
+**When to use reference files:**
+- When a skill file exceeds 400 lines, look for content that can be extracted
+- Focus on error handling instructions and corner-case scenarios
+- Extract guidance that doesn't impact the skill's "happy path" workflow
+- Keep the main SKILL.md focused on the primary workflow
+
+**Example extraction:**
+```markdown
+## Step 5: Handle Errors
+
+**If an error occurs:**
+
+Load the error-handling reference for recovery steps:
+
+Read({ filePath: "references/error-handling.md" })
+
+**After reading**, follow the appropriate recovery procedure based on the error type.
 ```
+
+### Reusable Scripts
+
+When implementing deterministic steps in skills, prefer creating reusable bash or Python scripts:
+
+1. **Create scripts** for operations that need to be performed consistently within a skill
+2. **Place scripts** in a `scripts/` directory next to the SKILL.md file
+3. **Document usage** in the skill's reference files or inline with code examples
+4. **Example:** A script that validates YAML frontmatter could be placed at `skills/my-skill/scripts/validate-frontmatter.sh`
+
+**Skill Structure with Scripts:**
+```
+skills/
+  my-skill/
+    SKILL.md              # Main skill definition
+    references/           # Supporting docs
+      error-handling.md
+    scripts/              # Reusable scripts
+      validate-frontmatter.sh
+      extract-references.py
+```
+
+Benefits:
+- Consistency across skill implementations
+- Easier testing and maintenance
+- Reduced duplication in skill definitions
+- Scripts are co-located with the skill they support
+
+---
+
+## Agent Development
+
+### Agent Configuration
+
+Agents are defined as markdown files with YAML frontmatter:
+
+```markdown
+---
+description: Reviews code for best practices   # Required
+mode: subagent                                 # primary, subagent, or all
+model: anthropic/claude-sonnet-4-20250514     # Optional: defaults to global
+temperature: 0.1                               # Optional: 0.0-1.0
+steps: 10                                      # Optional: max iterations
+permission:                                    # Tool permissions
+  edit: ask
+  bash:
+    "*": ask
+    "git status": allow
+  skill:
+    "*": allow
+    "experimental-*": ask
+color: "#FF5733"                              # Optional: hex or theme color
+hidden: false                                  # Hide from @ menu (subagent only)
+---
+
+You are a specialized agent. Your purpose is...
+
+## Responsibilities
+
+1. Focus area one
+2. Focus area two
+
+## Guidelines
+
+- Guideline one
+- Guideline two
+```
+
+### Agent Modes
+
+- **primary**: Main agents users interact with directly (switch via Tab)
+- **subagent**: Specialized agents invoked via @ mention or Task tool
+- **all**: Can function as both
+
+### Agent Permissions
+
+Control tool access via frontmatter:
+
+```yaml
+# In agent.md frontmatter
+permission:
+  edit: deny          # ask, allow, or deny
+  bash:
+    "*": ask
+    "git status*": allow
+  skill:
+    "*": allow
+    "internal-*": deny
+  task:               # Subagent invocation
+    "*": deny
+    "orchestrator-*": allow
+```
+
+### File Naming
+
+- **Agent files:** `<agent-name>.md` (becomes the agent identifier)
+- **Location:** `agents/` directory or `~/.config/opencode/agents/`
+
+---
 
 ## Writing Conventions
 
 ### Step Instructions
 
 1. **Clear actions:** Start with verbs (Use, Read, Write, Ask)
-2. **Explicit blocking:** Mark steps that require user input with `**BLOCKING STEP:**`
-3. **Conditional logic:** Use `**If X:**` / `**If Y:**` patterns
-4. **Numbered lists:** For sequential actions that must happen in order
-5. **Bulleted lists:** For options, alternatives, or unordered information
+2. **Explicit blocking:** Mark steps requiring user input with `**BLOCKING STEP:**`
+3. **Conditional logic:** Use `**If X:**` / **If Y:**` patterns
+4. **Numbered lists:** For sequential actions
+5. **Bulleted lists:** For options or alternatives
+
+### Markdown Formatting
+
+1. **Headings:** Use ATX style (`#`, `##`, `###`)
+2. **Lists:** Use `-` for unordered, `1.` for ordered
+3. **Code blocks:** Specify language for syntax highlighting
+4. **Emphasis:** Use `**bold**` for important terms
+5. **Line length:** Wrap at 80-120 characters
+6. **Blank lines:** One between sections, two before headings
 
 ### User Interaction
 
-- Use `AskUserQuestion` tool for user prompts
+- Use `question` tool for user prompts
 - Provide multiple-choice options when possible
 - Include "Other" or custom input option when appropriate
 - Always wait for response before proceeding with blocking steps
 
-### Error Handling
-
-- Define clear error scenarios
-- Provide actionable recovery steps
-- Reference error-handling.md files for complex scenarios
-
-## Types
-
-This project is primarily markdown-based. No TypeScript or strict typing is required.
-
-## Imports and Dependencies
-
-- Python 3.14 required
-- `skills-ref` (>=0.1.1) - provides agentskills CLI
-- Uses `uv` for package management (not pip/poetry)
+---
 
 ## Development Workflow
 
-1. Create skill directory under `skills/<skill-name>/`
-2. Write `SKILL.md` with frontmatter and structured steps
-3. Add reference files in `references/` subdirectory as needed
-4. Validate skill definition with `agentskills validate`
-5. Test skill invocation through appropriate agent
+### Adding a New Skill
 
-## Git Conventions
+1. Create directory: `mkdir -p skills/<skill-name>/references`
+2. Create SKILL.md: `touch skills/<skill-name>/SKILL.md`
+3. Add frontmatter with `name`, `version`, `description`, `allowed-tools`
+4. Write structured steps using the conventions above
+5. Validate: `agentskills validate skills/<skill-name>/SKILL.md`
+6. Test invocation through appropriate agent
 
-- Commit messages: Clear, descriptive summaries
-- Branch naming: Not strictly enforced
-- No CI/CD pipeline currently configured
+### Adding a New Agent
+
+1. Create file: `touch agents/<agent-name>.md`
+2. Add frontmatter with `description` and `mode`
+3. Write system prompt defining agent behavior
+4. Configure permissions as needed
+5. Install to `~/.config/opencode/agents/` for testing
+
+### Updating Existing Components
+
+1. Edit `skills/<name>/SKILL.md` or `agents/<name>.md`
+2. Update version in skill frontmatter if applicable
+3. Update affected reference files
+4. Validate changes
+5. Reload OpenCode to pick up changes
+
+---
+
+## Testing
+
+### Skills
+
+Validated by:
+1. YAML frontmatter parsing (name, description required)
+2. Name format validation (`^[a-z0-9]+(-[a-z0-9]+)*$`)
+3. Reference file existence checks
+4. Workflow step validation
+5. Agent invocation testing via `skill({ name: "..." })`
+
+### Agents
+
+Test by:
+1. Verifying discovery in @ autocomplete (if not hidden)
+2. Testing Task tool invocation from parent agents
+3. Testing @ mention invocation directly
+4. Validating permission restrictions
+5. Checking tool access behavior
+
+---
+
+## Integration Patterns
+
+### Skill + Subagent Pattern
+
+For complex workflows, create both:
+
+1. **Skill**: Defines the workflow steps (reusable instructions)
+2. **Subagent**: Executes the workflow with specific permissions
+
+Example:
+```
+skills/
+  feature-planning/
+    SKILL.md           # How to plan a feature
+agents/
+  feature-planner.md   # Agent that uses the skill
+```
+
+### Cross-Skill References
+
+Skills can reference other skills:
+
+```markdown
+## Step 1: Analyze Requirements
+
+Load the project planning skill for initial analysis:
+
+skill({ name: "project-plan-formulation" })
+
+**After loading**, follow the interview process defined there.
+```
+
+### Agent Delegation
+
+Primary agents can invoke subagents in two ways:
+
+1. **Via Task tool** (programmatic invocation):
+```markdown
+When detailed analysis is needed, delegate to the explore agent:
+
+Use the task tool with subagent_type "explore" for codebase analysis.
+```
+
+2. **Via @ mention** (user or agent invocation):
+```markdown
+@explore find all occurrences of the User class in this codebase
+```
+
+**Note:** Users can invoke any subagent via @ mention, even if Task permissions would deny it.
+
+---
 
 ## Security Considerations
 
-- Skills should not expose or log secrets
-- File writes should respect project boundaries
-- User confirmation required for destructive operations
+- **Skills** should not expose or log secrets
+- **Agents** should have minimal required permissions (principle of least privilege)
+- **File writes** must respect project boundaries
+- **User confirmation** required for destructive operations (use `ask` permission)
+- **Task permissions** control which subagents can invoke others
 
-## Testing Skills
+---
 
-Skills are validated by:
-1. YAML frontmatter parsing
-2. Reference file existence checks
-3. Workflow step validation
-4. Agent invocation testing
+## References
 
-## Common Tasks
-
-### Adding a New Skill
-
-```bash
-mkdir -p skills/new-skill-name/references
-touch skills/new-skill-name/SKILL.md
-# Edit SKILL.md with appropriate structure
-```
-
-### Updating an Existing Skill
-
-1. Edit `skills/<name>/SKILL.md`
-2. Update version in frontmatter
-3. Update any affected reference files
-
-### Validating Skills
-
-```bash
-agentskills validate skills/<skill-name>/SKILL.md
-```
+- [OpenCode Plugins](https://opencode.ai/docs/plugins/)
+- [OpenCode Agents](https://opencode.ai/docs/agents/)
+- [OpenCode Skills](https://opencode.ai/docs/skills/)
+- [OpenCode SDK](https://opencode.ai/docs/sdk/)
+- [agentskills CLI](https://github.com/agentskills/agentskills)
