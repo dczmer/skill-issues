@@ -1,8 +1,10 @@
-# Feature Implementation Subagents
+# Skill Subagents
 
-This directory contains markdown-based subagent definitions for the feature-implementation skill. Each subagent handles a specific aspect of the TDD implementation workflow.
+This directory contains markdown-based subagent definitions used by various skills. Each subagent handles a specific aspect of skill workflows.
 
 ## Subagent Overview
+
+### Feature Implementation Subagents
 
 | Subagent | Purpose | When Used | Parallel |
 |----------|---------|-----------|----------|
@@ -13,6 +15,12 @@ This directory contains markdown-based subagent definitions for the feature-impl
 | [code-fixer](code-fixer.md) | Fix linter/type checker issues | Step 8.9 | Yes |
 | [deliverables-verifier](deliverables-verifier.md) | Verify deliverable categories | Step 9.2 | Yes (5 instances) |
 | [review-responder](review-responder.md) | Address PR review comments | Step 11.5 | Yes |
+
+### Bootstrap Subagents
+
+| Subagent | Purpose | When Used | Parallel |
+|----------|---------|-----------|----------|
+| [bootstrap-stub-creator](bootstrap-stub-creator.md) | Generate multi-language stub files for bootstrapping | Step 4 | Yes (max 5) |
 
 ## Usage
 

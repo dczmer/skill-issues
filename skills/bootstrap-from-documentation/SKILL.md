@@ -281,74 +281,83 @@ Use `question` to ask:
    - Module/function/class names mentioned
    - Import/dependency relationships
 
-### Step 4.2: Create Stub Files
+### Step 4.2: Generate Stub Files via Subagent (Parallel, Max 5)
 
-For each identified file:
+For each identified file from Step 4.1, delegate stub generation using `@` mentions.
 
-1. Determine the appropriate language from tech stack
-2. Create the file with:
-   - File header/docstring
-   - Module-level identifiers (classes, functions, interfaces) mentioned by name
-   - Placeholder implementations (`pass`, `TODO`, `raise NotImplementedError`)
+**Batch processing (max 5 parallel at a time):**
 
-**Stub Template Examples:**
+For each batch of up to 5 files, send all `@` mentions in one response:
 
-**Python:**
-```python
-"""
-Module: [module_name]
-Purpose: [from project plan]
-"""
+```
+@bootstrap-stub-creator Generate stub for:
 
-class ClassName:
-    """Docstring from project plan."""
-    pass
+File Path: [file_path_1]
+Language: [detected_language_1]
+Purpose: [module_purpose_1]
+Module Name: [module_name_1]
 
-def function_name():
-    """Docstring from project plan."""
-    pass
+Classes:
+- [class_name]: [description]
+
+Functions:
+- [function_name]: [signature] - [description]
+
+Imports needed:
+- [import_list]
+
+---
+
+@bootstrap-stub-creator Generate stub for:
+
+File Path: [file_path_2]
+Language: [detected_language_2]
+Purpose: [module_purpose_2]
+Module Name: [module_name_2]
+
+Classes:
+- [class_name]: [description]
+
+Functions:
+- [function_name]: [signature] - [description]
+
+Imports needed:
+- [import_list]
+
+[... up to 5 total in one response for parallel execution]
 ```
 
-**TypeScript/JavaScript:**
-```typescript
-/**
- * Module: [module_name]
- * Purpose: [from project plan]
- */
+**Wait for all subagents in batch to complete.**
 
-export class ClassName {
-  // TODO: implement
-}
+**Repeat** until all files are processed.
 
-export function functionName(): ReturnType {
-  // TODO: implement
-}
-```
+### Step 4.3: Write Generated Stubs
 
-**Go:**
-```go
-// Package [name] - [purpose from project plan]
-package packagename
+For each subagent response:
+1. Parse JSON response
+2. Use `Write` to create file at `file_path` with `content`
+3. Track successful generations and any failures
 
-// FunctionName - [description]
-func FunctionName() {
-    // TODO: implement
-}
-```
+### Step 4.4: Aggregate Results
 
-### Step 4.3: Pause for Review
+After all subagents complete:
+1. Count total stubs generated (files, classes, functions)
+2. Identify any failures or partial completions
+3. Present summary to user
+
+### Step 4.5: Pause for Review (BLOCKING STEP)
 
 Use `question` to ask:
-- "Created [N] stub files with [M] module identifiers. Review the structure?"
+- "Generated [N] stub files with [M] classes and [P] functions across [L] languages. Review?"
 - Options: "Continue" / "Show me the files" / "I need changes" / "Abort"
 
 **If "Show me the files":**
-- List all created files with their stubs
+- List all created files with previews
 - Return to options
 
 **If "I need changes":**
 - Ask what to add/remove/modify
-- Apply changes
+- Apply changes (can re-invoke subagents for modified specs)
 - Show updated structure
 
 **After this step:** STOP. Update todo list. Wait for user confirmation before continuing.
