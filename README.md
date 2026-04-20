@@ -36,14 +36,14 @@ ln -s $(pwd)/agents ~/.config/opencode/agents/skill-issues
 After installation, verify skills and agents are discoverable:
 
 ```bash
-# Check skills are visible in the skill tool
-# In OpenCode, the skill tool will list available skills in <available_skills>
+# Check skills are available in the /skills menu
+# Type `/skills` in the OpenCode prompt to see available skills
 
 # Verify agents appear in @ autocomplete
 # Type @ in the OpenCode prompt to see available agents
 
 # Test skill loading
-skill({ name: "feature-planning" })
+/skill feature-planning
 
 # Test agent invocation
 @feature-planner help me plan a new feature
@@ -53,11 +53,14 @@ skill({ name: "feature-planning" })
 
 ### Invoking Skills
 
-Skills can be loaded via the native `skill` tool:
+Skills can be loaded via the `/skills` menu or by typing `/<skill-name>`:
 
 ```markdown
-# Load a skill to access its workflow
-skill({ name: "feature-implementation" })
+# List all available skills
+/skills
+
+# Load a specific skill directly
+/feature-implementation
 
 # The skill's instructions will guide the agent through the process
 ```
@@ -78,41 +81,3 @@ When planning is needed, delegate to the feature planner:
 Use the task tool with subagent_type "feature-planner" for requirements analysis.
 ```
 
-## Discovery Paths
-
-OpenCode searches for skills and agents in these locations:
-
-**Skills:**
-- `~/.config/opencode/skills/<name>/SKILL.md` (OpenCode native)
-- `~/.agents/skills/<name>/SKILL.md` (Agent-compatible)
-- `.opencode/skills/<name>/SKILL.md` (Project-local)
-- `.agents/skills/<name>/SKILL.md` (Project-local, agent-compatible)
-
-**Agents:**
-- `~/.config/opencode/agents/<name>.md` (OpenCode native)
-- `.opencode/agents/<name>.md` (Project-local)
-
-## Troubleshooting
-
-### Skills Not Appearing
-
-1. Verify `SKILL.md` is spelled in all caps
-2. Check frontmatter includes `name` and `description`
-3. Ensure skill name matches directory name
-4. Check permissions—skills with `deny` are hidden
-5. Verify installation path is in discovery locations
-
-### Agents Not Discoverable
-
-1. Verify `.md` file extension
-2. Check frontmatter includes `description`
-3. For subagents, ensure `mode: subagent` is set
-4. Check `hidden: true` isn't hiding from @ menu
-5. Verify file is in `agents/` directory or `~/.config/opencode/agents/`
-
-### Permission Issues
-
-1. Check global `opencode.json` permission settings
-2. Verify agent-specific permission overrides
-3. Review skill-specific permissions in `permission.skill`
-4. Ensure task permissions allow subagent invocation
